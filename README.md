@@ -8,22 +8,22 @@ report plus a natural-language Q&A interface.
 ## Architecture Layers
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  ui/            Streamlit Chat UI (scan trigger + Q&A)   │
-├─────────────────────────────────────────────────────────┤
-│  agent/         LangChain Tool-Calling Agent             │
-│                 ├─ core      Agent executor              │
-│                 ├─ tools     LangChain Tool wrappers     │
-│                 └─ reporter  Report assembly             │
-├─────────────────────────────────────────────────────────┤
-│  scanners/      Tool execution layer (Nmap / nmcli / HTTP)│
-│                 network_info / wifi_security             │
-│                 nmap_scanner / router_probe / port_risk  │
-├─────────────────────────────────────────────────────────┤
-│  rag/           Vector KB (ChromaDB + Azure Embeddings)  │
-│                 vector_store / embeddings / retriever    │
-│                 ingest/  NVD / OWASP / CIS loaders       │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  ui/            Streamlit Chat UI (scan trigger + Q&A)     │
+├────────────────────────────────────────────────────────────┤
+│  agent/         LangChain Tool-Calling Agent               │
+│                 ├─ core      Agent executor                │
+│                 ├─ tools     LangChain Tool wrappers       │
+│                 └─ reporter  Report assembly               │
+├────────────────────────────────────────────────────────────┤
+│  scanners/      Tool execution layer (Nmap / nmcli / HTTP) │
+│                 network_info / wifi_security               │
+│                 nmap_scanner / router_probe / port_risk    │
+├────────────────────────────────────────────────────────────┤
+│  rag/           Vector KB (ChromaDB + Azure Embeddings)    │
+│                 vector_store / embeddings / retriever      │
+│                 ingest/  NVD / OWASP / CIS loaders         │
+└────────────────────────────────────────────────────────────┘
 
 models/    Shared Pydantic schemas (Device / CVE / Report …)
 config/    Settings & system prompts
