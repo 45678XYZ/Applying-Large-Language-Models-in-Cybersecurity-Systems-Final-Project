@@ -20,6 +20,11 @@ from pathlib import Path
 # Make the project root importable when running this file directly.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from dotenv import load_dotenv  # noqa: E402
+
+# Populate os.environ from .env so library code reading getenv() sees keys.
+load_dotenv()
+
 from config import settings  # noqa: E402
 from rag.ingest.nvd_loader import fetch_nvd_cves  # noqa: E402
 
