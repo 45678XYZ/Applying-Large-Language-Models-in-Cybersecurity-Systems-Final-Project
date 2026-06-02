@@ -20,7 +20,7 @@ natural-language Q&A on the results.
 ```
 Phase 0 — Bootstrap                          ✅ DONE
 Phase 1 — Foundation
-  ├─ A: scanners (5 tasks)                  ░░░░░  not started
+  ├─ A: scanners (5 tasks)                  █████  DONE
   └─ B: RAG knowledge base (6 tasks)        █████  DONE
 Phase 2 — Retrieval & Tooling Layer          ← B's next: rag/retriever.py
 Phase 3 — Cross-cutting Glue                 blocked on Phase 2 + A's Phase 1
@@ -103,11 +103,11 @@ explicitly.
 
 **A: complete the remaining raw scanners**
 
-- [ ] `scanners/wifi_security.py` — nmcli on Linux, `airport`/`networksetup` on macOS
-- [ ] `scanners/nmap_scanner.py` — host discovery + top-N port scan + `-sV` + `-O`
-- [ ] `scanners/router_probe.py` — HTTP/HTTPS gateway probe, UPnP/Telnet/SSH checks
-- [ ] `utils/oui_lookup.py` — MAC → vendor mapping (ship IEEE OUI file under `data/`)
-- [ ] Per-scanner smoke test: call from REPL and verify `model_dump_json()` output
+- [x] `scanners/wifi_security.py` — nmcli on Linux, `airport`/`networksetup` on macOS
+- [x] `scanners/nmap_scanner.py` — host discovery + top-N port scan + `-sV` + `-O`
+- [x] `scanners/router_probe.py` — HTTP/HTTPS gateway probe, UPnP/Telnet/SSH checks
+- [x] `utils/oui_lookup.py` — MAC → vendor mapping (ship IEEE OUI file under `data/`)
+- [x] Per-scanner smoke test: call from REPL and verify `model_dump_json()` output
 
 **B: build the RAG knowledge base** ✅ DONE
 
