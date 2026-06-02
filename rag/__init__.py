@@ -5,7 +5,7 @@ Public surface:
     - `Retriever.search(query, k)` — generic semantic search
 """
 
-from .retriever import Retriever
+from .retriever import Retriever, build_default_retriever
 from .vector_store import VectorStore
 
-__all__ = ["Retriever", "VectorStore"]
+__all__ = ["Retriever", "VectorStore", "build_default_retriever"]
