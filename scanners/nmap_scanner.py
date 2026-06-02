@@ -9,6 +9,7 @@ from __future__ import annotations
 import socket
 
 from models import Device, Port
+from utils.oui_lookup import lookup_vendor
 
 
 def scan_network(
@@ -96,7 +97,12 @@ def _vendor_from_nmap(host_data: dict, mac: str | None) -> str | None:
     if not mac:
         return None
     vendors = host_data.get("vendor") or {}
-    return vendors.get(mac) or vendors.get(mac.upper()) or vendors.get(mac.lower())
+    return (
+        vendors.get(mac)
+        or vendors.get(mac.upper())
+        or vendors.get(mac.lower())
+        or lookup_vendor(mac)
+    )
 
 
 def _os_guess_from_nmap(host_data: dict) -> str | None:
