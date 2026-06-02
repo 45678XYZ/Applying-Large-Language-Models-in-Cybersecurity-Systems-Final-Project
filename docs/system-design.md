@@ -22,13 +22,21 @@ Phase 0 — Bootstrap                          ✅ DONE
 Phase 1 — Foundation
   ├─ A: scanners (5 tasks)                  ░░░░░  not started
   └─ B: RAG knowledge base (6 tasks)        █████  DONE
-Phase 2 — Retrieval & Tooling Layer          ← B's next: rag/retriever.py
-Phase 3 — Cross-cutting Glue                 blocked on Phase 2 + A's Phase 1
+Phase 2 — Retrieval & Tooling Layer
+  ├─ A: scanner enrichment (2 tasks)        ░░     not started (needs Phase 1 A)
+  └─ B: retriever API (4 tasks)             ████   DONE  ← SYNC 1 contract locked
+Phase 3 — Cross-cutting Glue                 blocked on A's Phase 1
 Phase 4–6                                    not started
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
 metadata-filtered retrieval verified on both collections.
+
+**SYNC 1 contract** (Retriever API, frozen for A and B's downstream use):
+- `lookup_cve(product, version=None, k=5, min_cvss=None) -> list[CVE]`
+- `lookup_port_risk(port, service=None, k=5) -> list[dict]`  (text/source/filename/distance)
+- `search(query, k=5) -> list[dict]`  (same shape as lookup_port_risk)
+- Factory: `rag.build_default_retriever()`
 
 **Open questions in §7 are still open** — should be decided before any
 Phase 3 work starts (autonomous vs sequential agent in particular).
@@ -132,16 +140,17 @@ collection names shorter than 3 chars).
 - [ ] Plug `oui_lookup` into `nmap_scanner` output (fills `Device.vendor`)
 - [ ] Optional: per-device hostname resolution (`socket.gethostbyaddr`)
 
-**B: retriever API**
+**B: retriever API** ✅ DONE
 
-- [ ] `rag/retriever.py.lookup_cve(product, version)` — metadata-filtered CVE search
-- [ ] `rag/retriever.py.lookup_port_risk(port, service)` — semantic KB search
-- [ ] `rag/retriever.py.search(query, k)` — generic Q&A retrieval
-- [ ] Smoke-test: query `lookup_cve("TP-Link Archer AX73")` returns sensible CVEs
+- [x] `rag/retriever.py.lookup_cve(product, version, k, min_cvss)` — semantic + CVSS-threshold filter, dedupes by `cve_id` (`07f9f28`)
+- [x] `rag/retriever.py.lookup_port_risk(port, service, k)` — port/service-shaped query into kb_docs (`07f9f28`)
+- [x] `rag/retriever.py.search(query, k)` — generic Q&A retrieval over kb_docs (`07f9f28`)
+- [x] Smoke-tests: 5 scenarios covering TP-Link CVE retrieval, CVSS filter, Telnet/RTSP port risk, KB gap detection
 
-> 🔁 **SYNC 1**: Lock down `Retriever`'s public method signatures here so
-> A can write `port_risk.py` and B can write `agent/tools.py` against the
-> same interface.
+> 🔁 **SYNC 1 — Contract locked.** A's `port_risk.py` and B's `agent/tools.py`
+> should both use `rag.build_default_retriever()` and call the signatures
+> recorded in §1.5. The Retriever is the only surface allowed to touch
+> VectorStore or the embedder directly.
 
 ### Phase 3 — Cross-cutting Glue
 
