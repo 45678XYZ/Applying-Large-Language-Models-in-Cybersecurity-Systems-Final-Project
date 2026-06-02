@@ -11,6 +11,12 @@ data/vector_db/*
 !data/vector_db/.gitkeep
 data/knowledge_base/raw/*
 !data/knowledge_base/raw/.gitkeep
+# Keep hand-authored markdown KB notes; raw downloads (PDFs, NVD JSON) stay ignored.
+!data/knowledge_base/raw/**/
+!data/knowledge_base/raw/**/*.md
+data/knowledge_base/raw/**/*.pdf
+data/knowledge_base/raw/**/*.json
+data/knowledge_base/raw/**/*.html
 
 .streamlit/secrets.toml
 *.log
