@@ -15,15 +15,17 @@ natural-language Q&A on the results.
 
 ---
 
-## 1.5. Status Snapshot (updated 2026-06-02)
+## 1.5. Status Snapshot (updated 2026-06-03)
 
 ```
 Phase 0 — Bootstrap                          ✅ DONE
 Phase 1 — Foundation
   ├─ A: scanners (5 tasks)                  █████  DONE
   └─ B: RAG knowledge base (6 tasks)        █████  DONE
-Phase 2 — Retrieval & Tooling Layer          ← A done; B's next: rag/retriever.py
-Phase 3 — Cross-cutting Glue                 blocked on Phase 2 + A's Phase 1
+Phase 2 — Retrieval & Tooling Layer
+  ├─ A: scanner enrichment (2 tasks)        ██     DONE
+  └─ B: retriever API (4 tasks)             ████   DONE  ← SYNC 1 locked
+Phase 3 — Cross-cutting Glue                 ready to start
 Phase 4–6                                    not started
 ```
 
