@@ -15,6 +15,26 @@ natural-language Q&A on the results.
 
 ---
 
+## 1.5. Status Snapshot (updated 2026-06-02)
+
+```
+Phase 0 — Bootstrap                          ✅ DONE
+Phase 1 — Foundation
+  ├─ A: scanners (5 tasks)                  ░░░░░  not started
+  └─ B: RAG knowledge base (6 tasks)        █████  DONE
+Phase 2 — Retrieval & Tooling Layer          ← B's next: rag/retriever.py
+Phase 3 — Cross-cutting Glue                 blocked on Phase 2 + A's Phase 1
+Phase 4–6                                    not started
+```
+
+**KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
+metadata-filtered retrieval verified on both collections.
+
+**Open questions in §7 are still open** — should be decided before any
+Phase 3 work starts (autonomous vs sequential agent in particular).
+
+---
+
 ## 2. Team Split
 
 | Member       | Owns                                  | Directories                                     |
@@ -89,14 +109,21 @@ explicitly.
 - [ ] `utils/oui_lookup.py` — MAC → vendor mapping (ship IEEE OUI file under `data/`)
 - [ ] Per-scanner smoke test: call from REPL and verify `model_dump_json()` output
 
-**B: build the RAG knowledge base**
+**B: build the RAG knowledge base** ✅ DONE
 
-- [ ] `scripts/fetch_nvd.py` — pull NVD CVEs by CPE prefix (routers + IoT vendors)
-- [ ] `rag/ingest/owasp_loader.py` — drop OWASP IoT Top 10, CIS, NIST docs into `data/knowledge_base/raw/`
-- [ ] `rag/ingest/chunker.py` — overlapping-window splitter, keep section metadata
-- [ ] `rag/embeddings.py` — Azure OpenAI embedding client (`text-embedding-3-small`)
-- [ ] `rag/vector_store.py` — ChromaDB wrapper, two collections (`cve`, `kb`)
-- [ ] `scripts/build_kb.py` — runs the full pipeline end-to-end
+- [x] `scripts/fetch_nvd.py` — 5,000 CVEs cached across 12 home-net / IoT vendors (`8f70486`, `98b1d72`)
+- [x] `rag/ingest/owasp_loader.py` — markdown + PDF + HTML loader (`da92fc2`)
+- [x] `rag/ingest/chunker.py` — hierarchical-separator splitter with sliding overlap (`2434a30`)
+- [x] `rag/embeddings.py` — Azure OpenAI client, batching + retry on transient errors (`f00afcd`)
+- [x] `rag/vector_store.py` — ChromaDB wrapper, cosine space, upsert semantics (`e68c668`)
+- [x] `scripts/build_kb.py` — orchestrates both collections, skip-if-populated guard (`5224fb8`)
+- [x] Seed KB content: OWASP IoT Top 10 markdown (`e5487ca`) + 2 NIST PDFs placed under `data/knowledge_base/raw/nist/`
+
+**Notes from the build:** Swapped CIS Router Benchmark for NIST IR 8425
+(CIS has no consumer-router doc). Added `pypdf` to requirements.
+`load_dotenv(override=True)` in scripts so `.env` wins over stale shell
+exports. Chroma collections are `cve` and `kb_docs` (Chroma rejects
+collection names shorter than 3 chars).
 
 ### Phase 2 — Retrieval & Tooling Layer
 
