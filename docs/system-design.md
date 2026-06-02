@@ -22,10 +22,8 @@ Phase 0 — Bootstrap                          ✅ DONE
 Phase 1 — Foundation
   ├─ A: scanners (5 tasks)                  █████  DONE
   └─ B: RAG knowledge base (6 tasks)        █████  DONE
-Phase 2 — Retrieval & Tooling Layer
-  ├─ A: scanner enrichment (2 tasks)        ░░     not started (needs Phase 1 A)
-  └─ B: retriever API (4 tasks)             ████   DONE  ← SYNC 1 contract locked
-Phase 3 — Cross-cutting Glue                 blocked on A's Phase 1
+Phase 2 — Retrieval & Tooling Layer          ← A done; B's next: rag/retriever.py
+Phase 3 — Cross-cutting Glue                 blocked on Phase 2 + A's Phase 1
 Phase 4–6                                    not started
 ```
 
@@ -135,10 +133,10 @@ collection names shorter than 3 chars).
 
 ### Phase 2 — Retrieval & Tooling Layer
 
-**A: enrichment + first scanner integration**
+**A: enrichment + first scanner integration** — DONE
 
-- [ ] Plug `oui_lookup` into `nmap_scanner` output (fills `Device.vendor`)
-- [ ] Optional: per-device hostname resolution (`socket.gethostbyaddr`)
+- [x] Plug `oui_lookup` into `nmap_scanner` output (fills `Device.vendor`)
+- [x] Optional: per-device hostname resolution (`socket.gethostbyaddr`)
 
 **B: retriever API** ✅ DONE
 
