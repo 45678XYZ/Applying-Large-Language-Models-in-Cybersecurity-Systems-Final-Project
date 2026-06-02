@@ -22,8 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv  # noqa: E402
 
-# Populate os.environ from .env so library code reading getenv() sees keys.
-load_dotenv()
+# Treat .env as the project's source of truth — `override=True` lets it win
+# over stale shell exports (common when a key was rotated but ~/.zshrc still
+# exports an old value).
+load_dotenv(override=True)
 
 from config import settings  # noqa: E402
 from rag.ingest.nvd_loader import fetch_nvd_cves  # noqa: E402
