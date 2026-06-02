@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 from scanners import nmap_scanner, router_probe, wifi_security
@@ -135,3 +136,38 @@ def test_nmap_scanner_maps_fixture_to_devices(monkeypatch):
     assert devices[0].os_guess == "Linux 5.x (94% accuracy)"
     assert [port.number for port in devices[0].ports] == [22, 80]
     assert devices[0].model_dump_json()
+
+
+def test_nmap_scanner_uses_oui_vendor_fallback(monkeypatch, tmp_path):
+    oui_file = tmp_path / "oui.csv"
+    oui_file.write_text("prefix,vendor\nAABBCC,OUI Fallback Vendor\n", encoding="utf-8")
+    oui_lookup._load_oui_table.cache_clear()
+    monkeypatch.setattr(oui_lookup, "OUI_DATA_PATH", Path(oui_file))
+
+    class FakeScanner:
+        def __init__(self):
+            self.hosts = {
+                "192.168.1.11": {
+                    "addresses": {"ipv4": "192.168.1.11", "mac": "AA:BB:CC:11:22:33"},
+                    "vendor": {},
+                    "hostnames": [],
+                }
+            }
+
+        def scan(self, hosts, arguments, timeout):
+            pass
+
+        def all_hosts(self):
+            return list(self.hosts)
+
+        def __getitem__(self, host):
+            return self.hosts[host]
+
+    monkeypatch.setattr(nmap_scanner, "_new_port_scanner", FakeScanner)
+    monkeypatch.setattr(nmap_scanner.socket, "gethostbyaddr", lambda host: (_ for _ in ()).throw(socket.herror()))
+
+    devices = nmap_scanner.scan_network("192.168.1.0/24", top_ports=10, do_os_detection=False)
+
+    assert devices[0].vendor == "OUI Fallback Vendor"
+
+    oui_lookup._load_oui_table.cache_clear()
