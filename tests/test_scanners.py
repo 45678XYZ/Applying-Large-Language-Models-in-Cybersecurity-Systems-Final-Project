@@ -5,7 +5,8 @@ from __future__ import annotations
 import socket
 from pathlib import Path
 
-from scanners import nmap_scanner, router_probe, wifi_security
+from models import Device, Port
+from scanners import nmap_scanner, port_risk, router_probe, wifi_security
 from utils import oui_lookup
 
 
@@ -171,3 +172,51 @@ def test_nmap_scanner_uses_oui_vendor_fallback(monkeypatch, tmp_path):
     assert devices[0].vendor == "OUI Fallback Vendor"
 
     oui_lookup._load_oui_table.cache_clear()
+
+
+def test_port_risk_calls_retriever_for_each_open_port():
+    class FakeRetriever:
+        def __init__(self):
+            self.calls = []
+
+        def lookup_port_risk(self, port, service=None, k=5):
+            self.calls.append((port, service, k))
+            return [
+                {
+                    "text": "RTSP camera services may expose video streams and default password risks.",
+                    "source": "owasp",
+                    "filename": "owasp-iot-top-10-2018.md",
+                    "distance": 0.12,
+                }
+            ]
+
+    retriever = FakeRetriever()
+    device = Device(
+        ip="192.168.1.101",
+        hostname="camera.local",
+        vendor="Hikvision",
+        ports=[
+            Port(number=554, service="rtsp", product="Hikvision RTSP"),
+            Port(number=80, service="http", state="closed"),
+        ],
+    )
+
+    findings = port_risk.check_open_ports_risk(device, retriever=retriever, k=3)
+
+    assert retriever.calls == [(554, "rtsp", 3)]
+    assert len(findings) == 1
+    assert findings[0].dimension == "iot_exposure"
+    assert findings[0].severity == "high"
+    assert findings[0].affected == "camera.local / Hikvision port 554/tcp"
+    assert "owasp-iot-top-10-2018.md" in findings[0].description
+    assert findings[0].model_dump_json()
+
+
+def test_port_risk_returns_empty_for_device_without_open_ports():
+    class ShouldNotBeCalled:
+        def lookup_port_risk(self, port, service=None, k=5):
+            raise AssertionError("retriever should not be called")
+
+    device = Device(ip="192.168.1.50", ports=[Port(number=22, service="ssh", state="closed")])
+
+    assert port_risk.check_open_ports_risk(device, retriever=ShouldNotBeCalled()) == []
