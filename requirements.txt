@@ -1,5 +1,6 @@
 # LLM / Agent
 langchain>=0.3.0
+langchain-core>=0.3.0
 langchain-openai>=0.2.0
 openai>=1.40.0
 
@@ -19,3 +20,6 @@ streamlit>=1.36.0
 pydantic>=2.7.0
 pydantic-settings>=2.3.0
 python-dotenv>=1.0.0
+
+# Testing
+pytest>=8.0.0
