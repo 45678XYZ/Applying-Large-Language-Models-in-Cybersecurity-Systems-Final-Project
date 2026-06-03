@@ -11,12 +11,10 @@ Pass criteria:
       argument schema that serialises to the OpenAI tool format (what
       `llm.bind_tools` needs).
     * Each tool dispatches a tool call and returns valid JSON.
-    * `check_open_ports_risk` is allowed to report PENDING while A's
-      `scanners/port_risk.py` is still a stub — the wiring is still verified,
-      and this flips to PASS automatically once A implements it.
+    * `check_open_ports_risk` exercises A's real `scanners/port_risk.py`, with
+      only its default retriever builder replaced by an offline fixture.
 
-Exit code is 0 when the wiring is sound (PENDING allowed), non-zero on any
-real wiring failure.
+Exit code is 0 when the wiring is sound, non-zero on any real wiring failure.
 
 Usage:
     .venv/bin/python scripts/smoke_tools.py
@@ -67,6 +65,20 @@ class _StubRetriever:
 
     def lookup_cve(self, product, version=None, k=5, min_cvss=None):
         return [CVE(cve_id="CVE-2023-0001", cvss_score=8.1, description=f"stub CVE for {product}")]
+
+
+class _StubPortRiskRetriever:
+    """Stands in for `rag.Retriever.lookup_port_risk` inside A's port_risk."""
+
+    def lookup_port_risk(self, port, service=None, k=5):
+        return [
+            {
+                "text": f"{service or 'service'} on port {port} may expose IoT devices when authentication is weak.",
+                "source": "owasp",
+                "filename": "owasp-iot-top-10-2018.md",
+                "distance": 0.1,
+            }
+        ]
 
 
 def _fixture_get_network_info() -> NetworkInfo:
@@ -178,10 +190,13 @@ def main() -> int:
         "get_wifi_security": _fixture_get_wifi_security,
         "scan_network": _fixture_scan_network,
         "check_router_info": _fixture_check_router_info,
-        # check_open_ports_risk is intentionally NOT patched — we exercise A's
-        # real stub so the test reports PENDING until it is implemented.
+        # check_open_ports_risk itself is intentionally NOT patched: we exercise
+        # A's implementation and only stub its retriever dependency.
     }
-    with patch.multiple("agent.tools", **patches):
+    with patch.multiple("agent.tools", **patches), patch(
+        "scanners.port_risk._build_default_retriever",
+        lambda: _StubPortRiskRetriever(),
+    ):
         for call in _tool_calls():
             status, detail = _dispatch(by_name[call["name"]], call)
             statuses.append(status)
