@@ -11,8 +11,8 @@ Pass criteria:
       argument schema that serialises to the OpenAI tool format (what
       `llm.bind_tools` needs).
     * Each tool dispatches a tool call and returns valid JSON.
-    * `check_open_ports_risk` exercises A's real `scanners/port_risk.py`, with
-      only its default retriever builder replaced by an offline fixture.
+    * `check_open_ports_risk` exercises A's real `scanners/port_risk.py`, fed the
+      shared stub retriever that `build_tools` injects into it.
 
 Exit code is 0 when the wiring is sound, non-zero on any real wiring failure.
 
@@ -61,14 +61,15 @@ _DEVICE = Device(
 
 
 class _StubRetriever:
-    """Stands in for `rag.Retriever`; only `lookup_cve` is used by the tools."""
+    """Complete offline stand-in for `rag.Retriever`.
+
+    Implements both methods the agent's tools reach: `lookup_cve` (the
+    lookup_cve tool) and `lookup_port_risk` (which `build_tools` now injects
+    into A's port_risk via `check_open_ports_risk`).
+    """
 
     def lookup_cve(self, product, version=None, k=5, min_cvss=None):
         return [CVE(cve_id="CVE-2023-0001", cvss_score=8.1, description=f"stub CVE for {product}")]
-
-
-class _StubPortRiskRetriever:
-    """Stands in for `rag.Retriever.lookup_port_risk` inside A's port_risk."""
 
     def lookup_port_risk(self, port, service=None, k=5):
         return [
@@ -191,12 +192,10 @@ def main() -> int:
         "scan_network": _fixture_scan_network,
         "check_router_info": _fixture_check_router_info,
         # check_open_ports_risk itself is intentionally NOT patched: we exercise
-        # A's implementation and only stub its retriever dependency.
+        # A's real implementation, fed the shared _StubRetriever that build_tools
+        # injects into it.
     }
-    with patch.multiple("agent.tools", **patches), patch(
-        "scanners.port_risk._build_default_retriever",
-        lambda: _StubPortRiskRetriever(),
-    ):
+    with patch.multiple("agent.tools", **patches):
         for call in _tool_calls():
             status, detail = _dispatch(by_name[call["name"]], call)
             statuses.append(status)

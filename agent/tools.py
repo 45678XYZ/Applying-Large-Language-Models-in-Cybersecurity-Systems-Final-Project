@@ -11,14 +11,11 @@ Design notes
   upgrade to `response_format="content_and_artifact"` if it needs to recover
   the structured Pydantic objects without re-parsing; left out of this first
   draft to keep the SYNC 2 wiring minimal.
-* **Retriever wiring.** `lookup_cve` calls the `retriever` passed in here.
-  `check_open_ports_risk` delegates to A's `scanners/port_risk.py`, which owns
-  its own `build_default_retriever()` per the SYNC 1 contract — so it takes a
-  `Device`, not a retriever.
-* **A-side dependency.** `scanners/port_risk.py` is still a stub
-  (`NotImplementedError`); the `check_open_ports_risk` tool wires up correctly
-  and starts working the moment A implements it. This is the one item to
-  confirm at SYNC 2.
+* **Retriever wiring.** Both `lookup_cve` and `check_open_ports_risk` use the
+  one `retriever` passed in here: `lookup_cve` calls it directly, and the shared
+  instance is injected into A's `scanners/port_risk.py` (its `retriever`
+  parameter) so the whole agent reuses a single Chroma/embedder connection
+  rather than letting port_risk build its own default.
 """
 
 from __future__ import annotations
@@ -132,7 +129,9 @@ def build_tools(retriever: "Retriever") -> list["BaseTool"]:
         return _dump_list(cves)
 
     def _check_open_ports_risk(device: Device) -> str:
-        findings = check_open_ports_risk(device)
+        # Share this agent's retriever so port_risk reuses one Chroma/embedder
+        # connection instead of building its own per call.
+        findings = check_open_ports_risk(device, retriever=retriever)
         return _dump_list(findings)
 
     return [
