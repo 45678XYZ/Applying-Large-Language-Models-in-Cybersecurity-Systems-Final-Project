@@ -27,7 +27,7 @@ Phase 2 — Retrieval & Tooling Layer
   └─ B: retriever API (4 tasks)             ████   DONE  ← SYNC 1 locked
 Phase 3 — Cross-cutting Glue                 in progress
   ├─ A: port_risk.py (1 task)               ░      not started
-  └─ B: tools.py + prompts draft (2)        █░     prompts draft DONE
+  └─ B: tools.py + prompts draft (2)        ██     DONE  ← SYNC 2 ready (B side)
 Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
   └─ B: core / reporter / prompt-iter (3)   █░░    reporter DONE (early)
@@ -170,8 +170,10 @@ collection names shorter than 3 chars).
 
 **B: expose everything to LangChain**
 
-- [ ] `agent/tools.py.build_tools(retriever)` — wrap all six scanners/retrievers
-      as `StructuredTool`s with explicit Pydantic arg schemas
+- [x] `agent/tools.py.build_tools(retriever)` — six `StructuredTool`s with
+      explicit Pydantic arg schemas, JSON-string observations; `lookup_cve` uses
+      the passed retriever, `check_open_ports_risk` delegates to A's port_risk
+      (`3284fc5`)
 - [x] First draft of `config/prompts.py` — `AGENT_SYSTEM_PROMPT` +
       `REPORT_GENERATION_PROMPT` + `QA_FOLLOWUP_PROMPT`; hybrid autonomy,
       anti-hallucination + five-dimension/severity rubric (`6a2b239`)
@@ -179,6 +181,13 @@ collection names shorter than 3 chars).
 > 🔁 **SYNC 2**: First end-to-end "tool list" exists. Run a hand-crafted
 > agent prompt against a mock LLM that selects each tool once — verifies
 > all six tools wire up without raising.
+>
+> **B side ready.** `scripts/smoke_tools.py` (`0bb82a9`) automates this offline
+> (fixtures for scanners/retriever): 5/6 tools PASS, `check_open_ports_risk`
+> reports PENDING until A implements `scanners/port_risk.py`. Still to agree
+> with A: (1) scanner signatures frozen, (2) port_risk timeline, (3) §7
+> autonomous-vs-sequential, (4) whether tools should later return structured
+> objects via `content_and_artifact`.
 
 ### Phase 4 — Agent Executor & Report
 
