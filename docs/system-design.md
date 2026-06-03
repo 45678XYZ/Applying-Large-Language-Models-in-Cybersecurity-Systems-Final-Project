@@ -25,8 +25,8 @@ Phase 1 — Foundation
 Phase 2 — Retrieval & Tooling Layer
   ├─ A: scanner enrichment (2 tasks)        ██     DONE
   └─ B: retriever API (4 tasks)             ████   DONE  ← SYNC 1 locked
-Phase 3 — Cross-cutting Glue                 in progress
-  ├─ A: port_risk.py (1 task)               ░      not started
+Phase 3 — Cross-cutting Glue                 DONE
+  ├─ A: port_risk.py (1 task)               █      DONE
   └─ B: tools.py + prompts draft (2)        ██     DONE  ← SYNC 2 ready (B side)
 Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
@@ -165,8 +165,10 @@ collection names shorter than 3 chars).
 
 **A: bridge scanner → retriever**
 
-- [ ] `scanners/port_risk.py` — for each open port on a `Device`, call
+- [x] `scanners/port_risk.py` — for each open port on a `Device`, call
       `retriever.lookup_port_risk` + LLM reasoning, return `list[RiskFinding]`
+
+**A status:** DONE in `scanners/port_risk.py`; implemented retriever-backed `list[RiskFinding]` output with offline tests.
 
 **B: expose everything to LangChain**
 
@@ -183,10 +185,10 @@ collection names shorter than 3 chars).
 > all six tools wire up without raising.
 >
 > **B side ready.** `scripts/smoke_tools.py` (`0bb82a9`) automates this offline
-> (fixtures for scanners/retriever): 5/6 tools PASS, `check_open_ports_risk`
-> reports PENDING until A implements `scanners/port_risk.py`. Still to agree
-> with A: (1) scanner signatures frozen, (2) port_risk timeline, (3) §7
-> autonomous-vs-sequential, (4) whether tools should later return structured
+> (fixtures for scanners/retriever): `check_open_ports_risk` is now implemented
+> by A's `scanners/port_risk.py`; rerun once dependencies are installed. Still to agree:
+> (1) scanner signatures frozen, (2) §7 autonomous-vs-sequential,
+> (3) whether tools should later return structured
 > objects via `content_and_artifact`.
 
 ### Phase 4 — Agent Executor & Report
