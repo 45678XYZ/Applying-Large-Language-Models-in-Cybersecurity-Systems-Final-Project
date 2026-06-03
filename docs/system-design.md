@@ -30,7 +30,7 @@ Phase 3 — Cross-cutting Glue                 DONE
   └─ B: tools.py + prompts draft (2)        ██     DONE  ← SYNC 2 ready (B side)
 Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
-  └─ B: core / reporter / prompt-iter (3)   █░░    reporter DONE (early)
+  └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
 Phase 5–6                                    not started
 ```
 
@@ -43,12 +43,12 @@ metadata-filtered retrieval verified on both collections.
 - `search(query, k=5) -> list[dict]`  (same shape as lookup_port_risk)
 - Factory: `rag.build_default_retriever()`
 
-**§7 open questions still pending.** B's independent Phase 3/4 work has begun
-under documented assumptions: prompts use *hybrid autonomy* (tool-calling agent
-+ recommended order), and the A–F grade is computed deterministically in
-`reporter.py` rather than by the LLM. The autonomous-vs-sequential call should
-be finalised with A at **SYNC 2**, before `tools.py`/`core.py` wiring — it is a
-prompt-only change to flip.
+**§7 decided (2026-06-03).** Agent orchestration is **strictly sequential**
+(fixed Python pipeline in `core.py`, not LLM-chosen); no device-type classifier
+(LLM infers); UI **streams progress with fast-scan defaults** (pending A
+sign-off on the `core.py` callback interface). The A–F grade stays
+deterministic in `reporter.py`. `AGENT_SYSTEM_PROMPT` will be trimmed of its
+tool-selection framing when `core.py` lands. See §7 for the full rationale.
 
 ---
 
@@ -187,9 +187,9 @@ collection names shorter than 3 chars).
 > **B side ready.** `scripts/smoke_tools.py` (`0bb82a9`) automates this offline
 > (fixtures for scanners/retriever): `check_open_ports_risk` is now implemented
 > by A's `scanners/port_risk.py`; rerun once dependencies are installed. Still to agree:
-> (1) scanner signatures frozen, (2) §7 autonomous-vs-sequential,
-> (3) whether tools should later return structured
-> objects via `content_and_artifact`.
+> (1) scanner signatures frozen, (2) the `core.py` progress-callback interface
+> (§7 decided: sequential + streaming UI), (3) whether tools should later return
+> structured objects via `content_and_artifact`.
 
 ### Phase 4 — Agent Executor & Report
 
@@ -201,12 +201,14 @@ collection names shorter than 3 chars).
 
 **B: agent runtime**
 
-- [ ] `agent/core.py.SecurityAgent` — LangChain Tool-Calling executor + memory
+- [x] `agent/core.py.SecurityAgent` — sequential scan pipeline + progress
+      callback + LLM finding synthesis (graceful-degrading) + grounded Q&A
+      (`fc58c2b`); prompt reframed for the sequential design (`a4670e6`)
 - [x] `agent/reporter.py.assemble_report` + `grade_from_findings` —
       deterministic A–F grade (proposal §4.2 anchor) + Markdown summary,
       Pydantic-only, no LLM (`5731b65`)
-- [ ] Iterate `AGENT_SYSTEM_PROMPT` / `REPORT_GENERATION_PROMPT` until the
-      agent reliably calls tools in the planned order
+- [ ] Iterate `AGENT_SYSTEM_PROMPT` / `REPORT_GENERATION_PROMPT` against a live
+      LLM until findings are clean (no hallucinated CVEs) and Q&A stays grounded
 
 ### Phase 5 — End-to-end on a Real Network
 
@@ -258,12 +260,23 @@ Both members, working together:
 
 ---
 
-## 7. Open Questions (decide before Phase 3)
+## 7. Decisions (resolved 2026-06-03)
 
-- Do we need a **device-type classifier** (camera / speaker / NAS) or is
-  vendor + open ports enough for risk reasoning?
-- Should the agent be **strictly sequential** (fixed tool order) or
-  **autonomous** (LLM decides)? Autonomous is more impressive; sequential
-  is more predictable for the demo.
-- How do we handle **scan duration** in the UI — block, or background +
-  polling? Nmap on `/24` with `-sV -O` can take minutes.
+- **Device-type classifier — NO.** Use vendor + open ports + OS and let the
+  LLM infer device type (camera / NAS / …) during reasoning. `Device.device_type`
+  may be filled opportunistically by a simple heuristic later; not a blocker.
+- **Agent orchestration — STRICTLY SEQUENTIAL.** `agent/core.py` drives the
+  scan as a fixed Python pipeline (`network → wifi → scan → router →
+  lookup_cve per device → check_open_ports_risk → report`); order is guaranteed
+  in code, not chosen by the LLM. The LLM is used only to (a) reason over the
+  collected data into `RiskFinding`s and (b) answer Q&A. Chosen for demo
+  predictability over the "autonomous agent" showcase. **Implication:**
+  `AGENT_SYSTEM_PROMPT` drops the "decide which tool to call next / recommended
+  workflow" framing (orchestration moved to code); role, grounding,
+  anti-hallucination, and five-dimension/severity rules stay.
+- **Scan duration in UI — STREAM PROGRESS + FAST DEFAULTS** (pending A sign-off).
+  `core.py` exposes a callback hook so `ui/` can render tool-call progress
+  step-by-step (`st.status`). Defaults: top-100 ports, OS detection off (avoids
+  sudo), optionally narrow the host range; keep the `--offline` cached
+  `ScanReport` as a demo fallback. **SYNC point:** agree the `core.py` callback
+  interface with A before the UI wires to it.
