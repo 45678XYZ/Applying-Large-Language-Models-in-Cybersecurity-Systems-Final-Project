@@ -25,8 +25,13 @@ Phase 1 — Foundation
 Phase 2 — Retrieval & Tooling Layer
   ├─ A: scanner enrichment (2 tasks)        ██     DONE
   └─ B: retriever API (4 tasks)             ████   DONE  ← SYNC 1 locked
-Phase 3 — Cross-cutting Glue                 ready to start
-Phase 4–6                                    not started
+Phase 3 — Cross-cutting Glue                 in progress
+  ├─ A: port_risk.py (1 task)               ░      not started
+  └─ B: tools.py + prompts draft (2)        █░     prompts draft DONE
+Phase 4 — Agent Executor & Report            in progress
+  ├─ A: UI shell (3 tasks)                  ░░░    not started
+  └─ B: core / reporter / prompt-iter (3)   █░░    reporter DONE (early)
+Phase 5–6                                    not started
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -38,8 +43,12 @@ metadata-filtered retrieval verified on both collections.
 - `search(query, k=5) -> list[dict]`  (same shape as lookup_port_risk)
 - Factory: `rag.build_default_retriever()`
 
-**Open questions in §7 are still open** — should be decided before any
-Phase 3 work starts (autonomous vs sequential agent in particular).
+**§7 open questions still pending.** B's independent Phase 3/4 work has begun
+under documented assumptions: prompts use *hybrid autonomy* (tool-calling agent
++ recommended order), and the A–F grade is computed deterministically in
+`reporter.py` rather than by the LLM. The autonomous-vs-sequential call should
+be finalised with A at **SYNC 2**, before `tools.py`/`core.py` wiring — it is a
+prompt-only change to flip.
 
 ---
 
@@ -163,7 +172,9 @@ collection names shorter than 3 chars).
 
 - [ ] `agent/tools.py.build_tools(retriever)` — wrap all six scanners/retrievers
       as `StructuredTool`s with explicit Pydantic arg schemas
-- [ ] First draft of `config/prompts.py.AGENT_SYSTEM_PROMPT`
+- [x] First draft of `config/prompts.py` — `AGENT_SYSTEM_PROMPT` +
+      `REPORT_GENERATION_PROMPT` + `QA_FOLLOWUP_PROMPT`; hybrid autonomy,
+      anti-hallucination + five-dimension/severity rubric (`6a2b239`)
 
 > 🔁 **SYNC 2**: First end-to-end "tool list" exists. Run a hand-crafted
 > agent prompt against a mock LLM that selects each tool once — verifies
@@ -180,7 +191,9 @@ collection names shorter than 3 chars).
 **B: agent runtime**
 
 - [ ] `agent/core.py.SecurityAgent` — LangChain Tool-Calling executor + memory
-- [ ] `agent/reporter.py.assemble_report` + `grade_from_findings`
+- [x] `agent/reporter.py.assemble_report` + `grade_from_findings` —
+      deterministic A–F grade (proposal §4.2 anchor) + Markdown summary,
+      Pydantic-only, no LLM (`5731b65`)
 - [ ] Iterate `AGENT_SYSTEM_PROMPT` / `REPORT_GENERATION_PROMPT` until the
       agent reliably calls tools in the planned order
 
