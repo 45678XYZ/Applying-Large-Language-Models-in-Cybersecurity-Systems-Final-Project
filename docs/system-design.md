@@ -30,7 +30,7 @@ Phase 3 — Cross-cutting Glue                 DONE
   └─ B: tools.py + prompts draft (2)        ██     DONE  ← SYNC 2 ready (B side)
 Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
-  └─ B: core / reporter / prompt-iter (3)   █░░    reporter DONE (early)
+  └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
 Phase 5–6                                    not started
 ```
 
@@ -201,12 +201,14 @@ collection names shorter than 3 chars).
 
 **B: agent runtime**
 
-- [ ] `agent/core.py.SecurityAgent` — LangChain Tool-Calling executor + memory
+- [x] `agent/core.py.SecurityAgent` — sequential scan pipeline + progress
+      callback + LLM finding synthesis (graceful-degrading) + grounded Q&A
+      (`fc58c2b`); prompt reframed for the sequential design (`a4670e6`)
 - [x] `agent/reporter.py.assemble_report` + `grade_from_findings` —
       deterministic A–F grade (proposal §4.2 anchor) + Markdown summary,
       Pydantic-only, no LLM (`5731b65`)
-- [ ] Iterate `AGENT_SYSTEM_PROMPT` / `REPORT_GENERATION_PROMPT` until the
-      agent reliably calls tools in the planned order
+- [ ] Iterate `AGENT_SYSTEM_PROMPT` / `REPORT_GENERATION_PROMPT` against a live
+      LLM until findings are clean (no hallucinated CVEs) and Q&A stays grounded
 
 ### Phase 5 — End-to-end on a Real Network
 
