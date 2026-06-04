@@ -22,13 +22,13 @@ report plus a natural-language Q&A interface.
 ├────────────────────────────────────────────────────────────┤
 │  rag/           Vector KB (ChromaDB + Azure Embeddings)    │
 │                 vector_store / embeddings / retriever      │
-│                 ingest/  NVD / OWASP / CIS loaders         │
+│                 ingest/  NVD / OWASP / NIST loaders        │
 └────────────────────────────────────────────────────────────┘
 
 models/    Shared Pydantic schemas (Device / CVE / Report …)
 config/    Settings & system prompts
 utils/     Shared helpers (logger, OUI lookup)
-scripts/   One-shot scripts (build KB, fetch NVD)
+scripts/   One-shot scripts (build KB, fetch NVD, run scan)
 tests/     Unit tests
 data/      Raw KB documents + persisted vector store
 ```
@@ -45,11 +45,30 @@ data/      Raw KB documents + persisted vector store
 5. **Agent → Reporter**: synthesises everything into a `ScanReport`.
 6. **UI ← Report**: report is rendered, then the UI enters Q&A mode.
 
+## Prerequisites
+
+- **Python 3.12**, managed with [uv](https://docs.astral.sh/uv/) (the virtualenv lives in `.venv/`).
+- **Nmap** — a *system* binary that the `python-nmap` package shells out to
+  (it is **not** a pip dependency):
+  - macOS: `brew install nmap`
+  - Debian / Ubuntu: `sudo apt install nmap`
+- **Wi-Fi tooling** used by `get_wifi_security`: `nmcli` (NetworkManager) on Linux;
+  built-in utilities on macOS / Windows.
+- **Azure OpenAI** credentials (a chat deployment + `text-embedding-3-small`) in `.env`.
+
+> OS detection (`nmap -O`) needs `sudo`; it is **off by default**, so a normal
+> scan runs without elevated privileges.
+
 ## Quick Start
 
 ```bash
-pip install -r requirements.txt
-cp .env.example .env             # fill in Azure OpenAI credentials
-python scripts/build_kb.py       # build the RAG knowledge base
-streamlit run app.py
+uv venv && uv pip install -r requirements.txt   # create .venv and install deps
+cp .env.example .env                            # fill in Azure OpenAI credentials
+.venv/bin/python scripts/build_kb.py            # build the RAG knowledge base
+
+# end-to-end scan from the CLI (works today):
+.venv/bin/python scripts/run_scan.py                          # scan + interactive Q&A
+.venv/bin/python scripts/run_scan.py --offline report.json    # demo from a cached report
+
+streamlit run app.py             # full Streamlit UI (in progress)
 ```
