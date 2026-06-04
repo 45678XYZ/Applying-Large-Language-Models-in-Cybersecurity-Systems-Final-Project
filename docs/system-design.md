@@ -31,7 +31,8 @@ Phase 3 — Cross-cutting Glue                 DONE
 Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
   └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
-Phase 5–6                                    not started
+Phase 5 — End-to-end on a Real Network       started (CLI run OK; UI pending A)
+Phase 6 — Testing, Polish, Demo              not started
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -214,11 +215,22 @@ collection names shorter than 3 chars).
 
 Both members, working together:
 
-- [ ] Run `streamlit run app.py` against the team's own home network
-- [ ] Verify the full chain: UI click → autonomous tool calls → real `ScanReport`
-- [ ] Capture failures: missed devices, hallucinated CVEs, prompt loops,
-      latency, sudo issues — log and triage
-- [ ] Fix the top 3 blockers from that triage
+- [x] First end-to-end run via CLI (`scripts/run_scan.py`) against a real home
+      network — full chain verified: nmap → KB retrieval → LLM synthesis →
+      graded `ScanReport` → grounded Q&A (2026-06-04). `--offline` cache mode
+      (the §6 fallback) also works.
+- [ ] Re-run through `streamlit run app.py` once A's UI is wired to `SecurityAgent`.
+- [x] Capture failures — triage logged below.
+- [ ] Fix the top 3 blockers from that triage.
+
+**Triage log — first run (2026-06-04):**
+
+| # | Symptom | Owner | Action |
+| - | ------- | ----- | ------ |
+| 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A | Tune `port_risk` severity heuristics. **Top blocker.** |
+| 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | Also look up CVEs by per-port `product`+`version` from `-sV` (e.g. BusyBox 1.19.4, MiniUPnP 1.8). **Top blocker.** |
+| 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A | Add a macOS Wi-Fi fallback (`wdutil` / CoreWLAN). |
+| 4 | Router model/firmware not extracted from a generic BusyBox banner → no router CVE check. | A/B | Known limit (§7.2); low priority. |
 
 ### Phase 6 — Testing, Polish, Demo
 
