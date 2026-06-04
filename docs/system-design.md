@@ -32,7 +32,7 @@ Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
   └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
 Phase 5 — End-to-end on a Real Network       started (CLI run OK; UI pending A)
-Phase 6 — Testing, Polish, Demo              not started
+Phase 6 — Testing, Polish, Demo              started (B regression harness in)
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -242,9 +242,20 @@ Both members, working together:
 
 **B: prompt regression & report quality**
 
-- [ ] Frozen "golden" scan inputs → check report grade is stable
-- [ ] Q&A regression set: 5–10 representative follow-up questions
+- [x] Frozen "golden" scan inputs → grade stable — `scripts/golden_scan.py`
+      asserts the fixed `golden_fixtures` network reproduces grade **C** plus
+      its rendered report, and pins every branch of the grading rubric
+      (25 checks, no LLM / no network).
+- [x] Q&A regression set — `scripts/qa_regression.py` runs 8 representative
+      follow-up questions (grade, top risk, Wi-Fi, the cited CVE, fix-first,
+      isolation, and two anti-hallucination probes), scoring each answer for
+      grounding. Reads the grade/CVE anchors live from the report, so it runs
+      against the golden network **or** any saved scan (`--report`). 8/8 pass.
 - [ ] Trim hallucinations: tighten prompts when the agent invents CVEs
+
+> Both share `scripts/golden_fixtures.py` — one hand-authored home LAN whose
+> graded output is deterministic (unlike a live nmap scan), which is what makes
+> it usable as a regression baseline.
 
 ---
 
