@@ -28,7 +28,7 @@ report plus a natural-language Q&A interface.
 models/    Shared Pydantic schemas (Device / CVE / Report …)
 config/    Settings & system prompts
 utils/     Shared helpers (logger, OUI lookup)
-scripts/   One-shot scripts (build KB, fetch NVD, run scan)
+scripts/   One-shot scripts (build KB, fetch NVD, run scan, regression)
 tests/     Unit tests
 data/      Raw KB documents + persisted vector store
 ```
@@ -71,4 +71,8 @@ cp .env.example .env                            # fill in Azure OpenAI credentia
 .venv/bin/python scripts/run_scan.py --offline report.json    # demo from a cached report
 
 streamlit run app.py             # full Streamlit UI (in progress)
+
+# regression checks:
+.venv/bin/python scripts/golden_scan.py     # deterministic grading/report (no LLM, no network)
+.venv/bin/python scripts/qa_regression.py   # grounded-answer checks (needs Azure creds + KB)
 ```

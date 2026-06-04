@@ -32,7 +32,7 @@ Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ░░░    not started
   └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
 Phase 5 — End-to-end on a Real Network       started (CLI run OK; UI pending A)
-Phase 6 — Testing, Polish, Demo              not started
+Phase 6 — Testing, Polish, Demo              started (B regression harness in)
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -228,7 +228,7 @@ Both members, working together:
 | # | Symptom | Owner | Action |
 | - | ------- | ----- | ------ |
 | 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A | Tune `port_risk` severity heuristics. **Top blocker.** |
-| 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | ✅ `_gather_cves` now also queries each open port's `product`+`version` from `-sV` (`f026c41`); unit-verified. Live re-run pending to confirm KB coverage for BusyBox/MiniUPnP. |
+| 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | ✅ **Done & live-confirmed (2026-06-04).** `_gather_cves` now also queries each open port's `product`+`version` from `-sV` (`f026c41`). Re-run cited 10 real KB CVEs across 2 high findings (e.g. CVE-2024-54807 9.8, CVE-2018-5371 8.8) → acceptance #4 met. |
 | 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A | Add a macOS Wi-Fi fallback (`wdutil` / CoreWLAN). |
 | 4 | Router model/firmware not extracted from a generic BusyBox banner → no router CVE check. | A/B | Known limit (§7.2); low priority. |
 
@@ -242,9 +242,28 @@ Both members, working together:
 
 **B: prompt regression & report quality**
 
-- [ ] Frozen "golden" scan inputs → check report grade is stable
-- [ ] Q&A regression set: 5–10 representative follow-up questions
-- [ ] Trim hallucinations: tighten prompts when the agent invents CVEs
+- [x] Frozen "golden" scan inputs → grade stable — `scripts/golden_scan.py`
+      asserts the fixed `golden_fixtures` network reproduces grade **C** plus
+      its rendered report, and pins every branch of the grading rubric
+      (25 checks, no LLM / no network).
+- [x] Q&A regression set — `scripts/qa_regression.py` runs 8 representative
+      follow-up questions (grade, top risk, Wi-Fi, the cited CVE, fix-first,
+      isolation, and two anti-hallucination probes), scoring each answer for
+      grounding. Reads the grade/CVE anchors live from the report, so it runs
+      against the golden network **or** any saved scan (`--report`). 8/8 pass.
+- [x] Trim hallucinations — `scripts/prompt_probes.py` stress-tests the
+      synthesis prompts with crafted CVE contexts (empty / relevant /
+      mismatched / missing). Grounding already held **10/10**, so the change
+      was limited to anchoring borderline severities in `config/prompts.py`
+      (admin-panel-on-LAN, missing data) for a stable grade — confirmed by
+      re-running the probe (no more low/info drift).
+
+> Both share `scripts/golden_fixtures.py` — one hand-authored home LAN whose
+> graded output is deterministic (unlike a live nmap scan), which is what makes
+> it usable as a regression baseline.
+>
+> 📄 Captured run transcripts (25/25 · 10/10 · 8/8) and the convergence
+> before/after are recorded in [`docs/phase6-regression.md`](phase6-regression.md).
 
 ---
 
