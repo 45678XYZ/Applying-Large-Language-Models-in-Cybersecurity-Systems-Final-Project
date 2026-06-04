@@ -71,6 +71,16 @@ class SecurityAgent:
         self._on_event = on_event
         self._last_report: ScanReport | None = None
 
+    @property
+    def last_report(self) -> ScanReport | None:
+        """The most recent ScanReport, or None before the first scan."""
+        return self._last_report
+
+    def load_report(self, report: ScanReport) -> None:
+        """Prime Q&A from a previously produced report (e.g. an offline cache),
+        without re-running a scan."""
+        self._last_report = report
+
     # ── full scan ────────────────────────────────────────────────────────
 
     def run_full_scan(self) -> ScanReport:
