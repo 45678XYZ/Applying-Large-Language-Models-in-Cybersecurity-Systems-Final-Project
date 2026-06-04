@@ -251,7 +251,12 @@ Both members, working together:
       isolation, and two anti-hallucination probes), scoring each answer for
       grounding. Reads the grade/CVE anchors live from the report, so it runs
       against the golden network **or** any saved scan (`--report`). 8/8 pass.
-- [ ] Trim hallucinations: tighten prompts when the agent invents CVEs
+- [x] Trim hallucinations — `scripts/prompt_probes.py` stress-tests the
+      synthesis prompts with crafted CVE contexts (empty / relevant /
+      mismatched / missing). Grounding already held **10/10**, so the change
+      was limited to anchoring borderline severities in `config/prompts.py`
+      (admin-panel-on-LAN, missing data) for a stable grade — confirmed by
+      re-running the probe (no more low/info drift).
 
 > Both share `scripts/golden_fixtures.py` — one hand-authored home LAN whose
 > graded output is deterministic (unlike a live nmap scan), which is what makes
