@@ -228,7 +228,7 @@ Both members, working together:
 | # | Symptom | Owner | Action |
 | - | ------- | ----- | ------ |
 | 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A | Tune `port_risk` severity heuristics. **Top blocker.** |
-| 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | Also look up CVEs by per-port `product`+`version` from `-sV` (e.g. BusyBox 1.19.4, MiniUPnP 1.8). **Top blocker.** |
+| 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | ✅ `_gather_cves` now also queries each open port's `product`+`version` from `-sV` (`f026c41`); unit-verified. Live re-run pending to confirm KB coverage for BusyBox/MiniUPnP. |
 | 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A | Add a macOS Wi-Fi fallback (`wdutil` / CoreWLAN). |
 | 4 | Router model/firmware not extracted from a generic BusyBox banner → no router CVE check. | A/B | Known limit (§7.2); low priority. |
 
