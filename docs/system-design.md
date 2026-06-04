@@ -261,6 +261,9 @@ Both members, working together:
 > Both share `scripts/golden_fixtures.py` — one hand-authored home LAN whose
 > graded output is deterministic (unlike a live nmap scan), which is what makes
 > it usable as a regression baseline.
+>
+> 📄 Captured run transcripts (25/25 · 10/10 · 8/8) and the convergence
+> before/after are recorded in [`docs/phase6-regression.md`](phase6-regression.md).
 
 ---
 
