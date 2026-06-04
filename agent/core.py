@@ -142,16 +142,40 @@ class SecurityAgent:
             self._on_event(message)
 
     def _gather_cves(self, devices: list[Device], router: RouterInfo | None) -> dict[str, list[CVE]]:
-        """Look up CVEs for each distinct device vendor and the router model."""
-        products: list[str] = [d.vendor for d in devices if d.vendor]
+        """Look up CVEs per identifiable product: device vendors, the router
+        model, and each open port's service product/version from `-sV`.
+
+        The per-port products (e.g. "BusyBox http 1.19.4", "MiniUPnP 1.8") are
+        what let the report cite real CVEs even when nmap could not resolve a
+        MAC-based vendor — the common no-sudo case. Results are keyed by a
+        device-aware label so the LLM can attribute each CVE to a host.
+        """
+        queries: list[tuple[str, str, str | None]] = []  # (label, product, version)
+        seen: set[tuple[str, str | None]] = set()
+
+        def add(label: str, product: str | None, version: str | None = None) -> None:
+            product = (product or "").strip()
+            if not product:
+                return
+            key = (product.lower(), (version or "").lower() or None)
+            if key in seen:
+                return
+            seen.add(key)
+            queries.append((label, product, version))
+
+        for device in devices:
+            add(device.ip, device.vendor)
+            for port in device.ports:
+                if port.state == "open" and port.product:
+                    add(f"{device.ip} · {port.product}", port.product, port.version)
         if router and router.model:
-            products.append(router.model)
+            add(f"router {router.gateway_ip}", router.model)
 
         cves: dict[str, list[CVE]] = {}
-        for product in dict.fromkeys(products):  # dedupe, preserve order
-            hits = self._retriever.lookup_cve(product, k=settings.rag_top_k)
+        for label, product, version in queries:
+            hits = self._retriever.lookup_cve(product, version=version, k=settings.rag_top_k)
             if hits:
-                cves[product] = hits
+                cves[label] = hits
         return cves
 
     def _synthesize_findings(
@@ -196,11 +220,14 @@ class SecurityAgent:
     ) -> str:
         already = "\n".join(f"- {f.dimension}: {f.title}" for f in port_findings) or "(none)"
         return (
-            "\n\nOpen-port risks have already been assessed and WILL be included "
-            "in the report — do not repeat them. Focus on the remaining "
-            "dimensions: wifi_encryption, router_vulnerability (use the CVE "
-            "context), network_isolation, and any remote_attack_surface risk not "
-            "tied to a specific scanned port.\n\n"
+            "\n\nGeneric open-port exposure has already been assessed and WILL be "
+            "included in the report — do not repeat those. Produce findings for: "
+            "wifi_encryption, network_isolation, and any remote_attack_surface risk "
+            "not tied to a specific scanned port. ALSO, whenever the CVE context "
+            "lists CVEs for a device/service, raise a CVE-backed finding that cites "
+            "those specific CVE IDs (router_vulnerability for the gateway, or "
+            "iot_exposure for another device) — even if a generic port-exposure "
+            "finding already exists for that port.\n\n"
             f"== Network ==\n{network.model_dump_json()}\n\n"
             f"== Wi-Fi ==\n{wifi.model_dump_json() if wifi else 'not detected (wired or unavailable)'}\n\n"
             f"== Router ==\n{router.model_dump_json() if router else 'not probed'}\n\n"
