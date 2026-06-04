@@ -18,6 +18,9 @@ data/knowledge_base/raw/**/*.pdf
 data/knowledge_base/raw/**/*.json
 data/knowledge_base/raw/**/*.html
 
+# Local scan outputs (contain real network topology — do not commit)
+data/*.json
+
 .streamlit/secrets.toml
 *.log
 .DS_Store
