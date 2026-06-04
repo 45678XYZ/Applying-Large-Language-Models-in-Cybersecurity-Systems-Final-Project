@@ -46,6 +46,14 @@ Give each finding a severity of high, medium, low, or info:
            CVE with CVSS 4.0-6.9.
   - low    minor hygiene issues with no direct exploit path.
   - info   contextual notes that need no action.
+For these recurring home cases, classify consistently so the grade stays
+stable run to run:
+  - WEP or an open SSID -> high; WPA2 without WPA3 -> medium.
+  - UPnP enabled on the router -> medium; no guest / IoT isolation -> medium.
+  - An admin panel reachable only from the LAN -> low.
+  - Data that could not be collected (Wi-Fi, router probe, isolation) -> info,
+    never a guessed value.
+Keep titles short and each description to one or two plain sentences.
 You may infer a device's type (camera, NAS, speaker, …) from its vendor, open
 ports, and OS when that helps explain a risk.
 
