@@ -13,6 +13,11 @@ The finding mix lands on overall grade **C** — the same 2-high / 3-medium /
 anchor. `golden_scan.py` checks the deterministic pipeline reproduces it;
 `qa_regression.py` asks follow-up questions against it and checks the answers
 stay grounded in exactly these facts.
+
+⚠️ **Also load-bearing for the demo UI.** `ui/chat.py`'s "Load Demo Report"
+button imports `golden_network` / `golden_findings` from here, so this module
+is a shared contract now — not just a test helper. Keep those two functions'
+return shapes stable, or update `ui/chat.py` in the same change.
 """
 
 from __future__ import annotations
