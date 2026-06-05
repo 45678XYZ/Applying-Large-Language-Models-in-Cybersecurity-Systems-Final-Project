@@ -15,7 +15,7 @@ natural-language Q&A on the results.
 
 ---
 
-## 1.5. Status Snapshot (updated 2026-06-03)
+## 1.5. Status Snapshot (updated 2026-06-05)
 
 ```
 Phase 0 — Bootstrap                          ✅ DONE
@@ -29,9 +29,9 @@ Phase 3 — Cross-cutting Glue                 DONE
   ├─ A: port_risk.py (1 task)               █      DONE
   └─ B: tools.py + prompts draft (2)        ██     DONE  ← SYNC 2 ready (B side)
 Phase 4 — Agent Executor & Report            in progress
-  ├─ A: UI shell (3 tasks)                  ░░░    not started
+  ├─ A: UI shell (3 tasks)                  ███    DONE
   └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
-Phase 5 — End-to-end on a Real Network       started (CLI run OK; UI pending A)
+Phase 5 — End-to-end on a Real Network       started (CLI run OK; UI wired, live rerun pending)
 Phase 6 — Testing, Polish, Demo              started (B regression harness in)
 ```
 
@@ -194,11 +194,11 @@ collection names shorter than 3 chars).
 
 ### Phase 4 — Agent Executor & Report
 
-**A: UI shell (no live agent yet)**
+**A: UI shell**
 
-- [ ] `ui/chat.py` — Streamlit chat skeleton (pre-scan CTA + post-scan history)
-- [ ] `ui/report_view.py` — render a hand-crafted `ScanReport` fixture nicely
-- [ ] `app.py` — bootstrap LLM + retriever + agent, mount chat
+- [x] `ui/chat.py` — Streamlit chat skeleton (pre-scan CTA + post-scan history)
+- [x] `ui/report_view.py` — render a hand-crafted `ScanReport` fixture nicely
+- [x] `app.py` — bootstrap LLM + retriever + agent, mount chat
 
 **B: agent runtime**
 
@@ -219,7 +219,7 @@ Both members, working together:
       network — full chain verified: nmap → KB retrieval → LLM synthesis →
       graded `ScanReport` → grounded Q&A (2026-06-04). `--offline` cache mode
       (the §6 fallback) also works.
-- [ ] Re-run through `streamlit run app.py` once A's UI is wired to `SecurityAgent`.
+- [ ] Re-run through `streamlit run app.py` against the live network and capture screenshots.
 - [x] Capture failures — triage logged below.
 - [ ] Fix the top 3 blockers from that triage.
 
