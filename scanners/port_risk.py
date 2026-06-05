@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any, Protocol
 
 from models import Device, Port, RiskDimension, RiskFinding, Severity
@@ -136,23 +135,6 @@ _PORT_BASELINE: dict[int, tuple[Severity, RiskDimension, str, str]] = {
     ),
 }
 
-_HIGH_SIGNAL_TERMS = {
-    "default password",
-    "weak password",
-    "unauthorized",
-    "remote code execution",
-    "rce",
-}
-_MEDIUM_SIGNAL_TERMS = {
-    "insecure",
-    "misconfiguration",
-    "credential",
-    "authentication",
-    "firmware",
-    "privacy",
-}
-
-
 class PortRiskRetriever(Protocol):
     """Retriever surface frozen at SYNC 1."""
 
@@ -201,7 +183,6 @@ def _finding_from_port(
     hits: list[dict[str, Any]],
 ) -> RiskFinding:
     severity, dimension, title, recommendation = _baseline_for(port, device)
-    severity = _adjust_severity(severity, hits)
 
     affected = _affected_label(device, port)
     source_line = _source_line(hits)
@@ -255,26 +236,6 @@ def _baseline_for(port: Port, device: Device) -> tuple[Severity, RiskDimension, 
         f"Open {_display_service(port)} port",
         "Verify the service is expected, patched, and reachable only from trusted network segments.",
     )
-
-
-def _adjust_severity(base: Severity, hits: list[dict[str, Any]]) -> Severity:
-    text = " ".join(str(hit.get("text", "")) for hit in hits).lower()
-    if any(_term_present(term, text) for term in _HIGH_SIGNAL_TERMS):
-        return _max_severity(base, "high")
-    if any(_term_present(term, text) for term in _MEDIUM_SIGNAL_TERMS):
-        return _max_severity(base, "medium")
-    return base
-
-
-def _term_present(term: str, text: str) -> bool:
-    """Whole-word match so a short signal like "rce" does not fire inside an
-    unrelated word ("source", "resource", "force") in the retrieved KB text."""
-    return re.search(rf"\b{re.escape(term)}\b", text) is not None
-
-
-def _max_severity(a: Severity, b: Severity) -> Severity:
-    order: dict[Severity, int] = {"info": 0, "low": 1, "medium": 2, "high": 3}
-    return a if order[a] >= order[b] else b
 
 
 def _risk_sentence(severity: Severity, dimension: RiskDimension) -> str:
