@@ -1,16 +1,19 @@
 """LangChain Tool wrappers around the scanners + retriever.
 
-`build_tools(retriever)` composes the six capabilities the agent plans around
-into LangChain `StructuredTool`s, each with an explicit Pydantic argument
-schema so the Tool-Calling Agent gets a typed signature to fill.
+`build_tools(retriever)` composes the six capabilities into LangChain
+`StructuredTool`s, each with an explicit Pydantic argument schema so a
+Tool-Calling Agent gets a typed signature to fill.
+
+> **Not on the sequential runtime path.** Per the §7 decision, `agent/core.py`
+> orchestrates the scan itself and calls the scanners + retriever **directly**,
+> so it does not use these tools. `build_tools` is retained as the SYNC 2
+> tool-contract — and a ready basis if we later add an LLM-tool-calling mode —
+> and is exercised by `scripts/smoke_tools.py`.
 
 Design notes
 ------------
-* **Return shape.** Every tool returns a JSON *string* — the standard
-  observation shape for a tool-calling loop. `agent/core.py` (Phase 4) can
-  upgrade to `response_format="content_and_artifact"` if it needs to recover
-  the structured Pydantic objects without re-parsing; left out of this first
-  draft to keep the SYNC 2 wiring minimal.
+* **Return shape.** Every tool returns a JSON *string*, the standard
+  observation shape for a tool-calling loop.
 * **Retriever wiring.** Both `lookup_cve` and `check_open_ports_risk` use the
   one `retriever` passed in here: `lookup_cve` calls it directly, and the shared
   instance is injected into A's `scanners/port_risk.py` (its `retriever`
