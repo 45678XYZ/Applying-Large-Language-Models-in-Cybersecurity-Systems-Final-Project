@@ -1,4 +1,4 @@
-# System Design & Implementation Plan
+﻿# System Design & Implementation Plan
 
 This document is the **single source of truth** for who builds what, in what
 order, and what each task's "done" looks like. For the architectural
@@ -31,8 +31,8 @@ Phase 3 — Cross-cutting Glue                 DONE
 Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ███    DONE
   └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
-Phase 5 — End-to-end on a Real Network       started (CLI run OK; UI wired, live rerun pending)
-Phase 6 — Testing, Polish, Demo              started (B regression harness in)
+Phase 5 — End-to-end on a Real Network       started (CLI run OK; A blockers fixed; UI boot smoke OK; screenshots pending)
+Phase 6 — Testing, Polish, Demo              started (A scanner regressions + demo path done; B regression harness in)
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -220,25 +220,41 @@ Both members, working together:
       graded `ScanReport` → grounded Q&A (2026-06-04). `--offline` cache mode
       (the §6 fallback) also works.
 - [ ] Re-run through `streamlit run app.py` against the live network and capture screenshots.
+      UI boot smoke returned HTTP 200 on `localhost:8501` (2026-06-05);
+      in-app screenshot capture remains pending.
 - [x] Capture failures — triage logged below.
-- [ ] Fix the top 3 blockers from that triage.
+- [x] Fix the top 3 blockers from that triage.
 
 **Triage log — first run (2026-06-04):**
 
 | # | Symptom | Owner | Action |
 | - | ------- | ----- | ------ |
-| 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A | Tune `port_risk` severity heuristics. **Top blocker.** |
+| 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A | **Done (2026-06-05).** Gateway DNS/HTTP/HTTPS/UPnP now use LAN-specific baselines, and generic "exposed" KB language no longer escalates every port to high. |
 | 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | ✅ **Done & live-confirmed (2026-06-04).** `_gather_cves` now also queries each open port's `product`+`version` from `-sV` (`f026c41`). Re-run cited 10 real KB CVEs across 2 high findings (e.g. CVE-2024-54807 9.8, CVE-2018-5371 8.8) → acceptance #4 met. |
-| 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A | Add a macOS Wi-Fi fallback (`wdutil` / CoreWLAN). |
+| 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A | **Done (2026-06-05).** Added `wdutil info` parsing plus dynamic `networksetup` Wi-Fi interface fallback. |
 | 4 | Router model/firmware not extracted from a generic BusyBox banner → no router CVE check. | A/B | Known limit (§7.2); low priority. |
+
+**A-side update (2026-06-05):** `port_risk` now uses LAN-specific baselines
+for gateway DNS/HTTP/HTTPS/UPnP and no longer escalates every generic
+"exposed" KB hit to high. macOS Wi-Fi detection now falls back to `wdutil info`
+and dynamically discovered `networksetup` Wi-Fi interfaces. These fixes are
+covered by fixture-driven scanner regressions.
 
 ### Phase 6 — Testing, Polish, Demo
 
 **A: testing & demo**
 
-- [ ] `tests/test_scanners.py` — fixture-driven tests (no real network calls)
-- [ ] Demo script: 3 scenarios (clean network / risky IoT / vulnerable router)
-- [ ] Screenshots for the final report
+- [x] `tests/test_scanners.py` — fixture-driven tests (no real network calls);
+      includes phase 5 regressions for gateway severity and macOS `wdutil`
+      parsing. `python -m pytest tests\test_scanners.py --basetemp .pytest_tmp -p no:cacheprovider` → 10/10 pass.
+- [x] Demo script: 3 scenarios (clean network / risky IoT / vulnerable router)
+      in `scripts/demo_scenarios.py`, documented in `docs/demo-script.md`.
+      `python scripts/demo_scenarios.py --export --out docs/demo-reports`
+      writes deterministic Markdown/JSON reports for all three.
+- [x] Screenshots for the final report: Streamlit sidebar now supports a
+      selectable `Demo scenario`, so the final report can be captured from
+      the exact UI for `Clean network`, `Risky IoT`, and `Vulnerable router`.
+      Checklist and target paths are in `docs/demo-script.md`.
 
 **B: prompt regression & report quality**
 

@@ -62,6 +62,24 @@ def test_wifi_security_parses_windows_netsh(monkeypatch):
     assert info.band == "2.4GHz"
 
 
+def test_wifi_security_parses_macos_wdutil_info():
+    info = wifi_security._parse_wdutil_info(
+        """
+        Wi-Fi
+          SSID                 : HomeLab
+          Security             : WPA3 Personal
+          RSSI                 : -51 dBm
+          Channel              : 149 (5GHz, 80MHz)
+        """
+    )
+
+    assert info is not None
+    assert info.ssid == "HomeLab"
+    assert info.encryption == "WPA3"
+    assert info.signal_dbm == -51
+    assert info.band == "5GHz"
+
+
 def test_router_probe_aggregates_http_and_ports(monkeypatch):
     def fake_http_probe(gateway_ip: str, scheme: str):
         if scheme == "https":
@@ -210,6 +228,39 @@ def test_port_risk_calls_retriever_for_each_open_port():
     assert findings[0].affected == "camera.local / Hikvision port 554/tcp"
     assert "owasp-iot-top-10-2018.md" in findings[0].description
     assert findings[0].model_dump_json()
+
+
+def test_port_risk_keeps_common_gateway_services_below_high():
+    class GenericRetriever:
+        def lookup_port_risk(self, port, service=None, k=5):
+            return [
+                {
+                    "text": "Home routers expose local services for DNS, HTTP, HTTPS, and UPnP on trusted LANs.",
+                    "source": "owasp",
+                    "filename": "owasp-iot-top-10-2018.md",
+                }
+            ]
+
+    device = Device(
+        ip="192.168.1.1",
+        hostname="gateway.local",
+        is_gateway=True,
+        ports=[
+            Port(number=53, service="domain"),
+            Port(number=80, service="http"),
+            Port(number=443, service="https"),
+            Port(number=1900, service="upnp"),
+        ],
+    )
+
+    findings = port_risk.check_open_ports_risk(device, retriever=GenericRetriever())
+
+    severities = {finding.affected: finding.severity for finding in findings}
+    assert severities["gateway.local port 53/tcp"] == "low"
+    assert severities["gateway.local port 80/tcp"] == "medium"
+    assert severities["gateway.local port 443/tcp"] == "low"
+    assert severities["gateway.local port 1900/tcp"] == "medium"
+    assert all(finding.severity != "high" for finding in findings)
 
 
 def test_port_risk_returns_empty_for_device_without_open_ports():

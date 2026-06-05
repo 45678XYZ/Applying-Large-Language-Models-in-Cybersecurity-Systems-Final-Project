@@ -9,6 +9,33 @@ from models import Device, Port, RiskDimension, RiskFinding, Severity
 _ADMIN_SERVICES = {"http", "https", "ssh", "telnet", "ftp", "rdp", "vnc"}
 _IOT_SERVICES = {"rtsp", "upnp", "ssdp", "mqtt", "coap", "mdns"}
 
+_GATEWAY_PORT_BASELINE: dict[int, tuple[Severity, RiskDimension, str, str]] = {
+    53: (
+        "low",
+        "remote_attack_surface",
+        "Gateway DNS resolver exposed on LAN",
+        "Keep DNS service limited to the private LAN and confirm it is not reachable from guest or WAN networks.",
+    ),
+    80: (
+        "medium",
+        "remote_attack_surface",
+        "Gateway HTTP admin service exposed",
+        "Prefer HTTPS-only administration and restrict access to trusted management clients.",
+    ),
+    443: (
+        "low",
+        "remote_attack_surface",
+        "Gateway HTTPS admin service exposed",
+        "Keep router firmware updated and restrict administrative access to trusted management clients.",
+    ),
+    1900: (
+        "medium",
+        "iot_exposure",
+        "Gateway UPnP/SSDP exposed on LAN",
+        "Disable UPnP unless required, and make sure it is not reachable from guest or WAN networks.",
+    ),
+}
+
 _PORT_BASELINE: dict[int, tuple[Severity, RiskDimension, str, str]] = {
     21: (
         "medium",
@@ -114,8 +141,6 @@ _HIGH_SIGNAL_TERMS = {
     "unauthorized",
     "remote code execution",
     "rce",
-    "telnet",
-    "exposed",
 }
 _MEDIUM_SIGNAL_TERMS = {
     "insecure",
@@ -201,6 +226,9 @@ def _finding_from_port(
 
 
 def _baseline_for(port: Port, device: Device) -> tuple[Severity, RiskDimension, str, str]:
+    if device.is_gateway and port.number in _GATEWAY_PORT_BASELINE:
+        return _GATEWAY_PORT_BASELINE[port.number]
+
     baseline = _PORT_BASELINE.get(port.number)
     if baseline is not None:
         return baseline

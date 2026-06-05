@@ -107,16 +107,26 @@ def _parse_iwconfig(output: str) -> WiFiInfo | None:
 def _darwin_wifi_security() -> WiFiInfo | None:
     airport_output = _run_text([_AIRPORT, "-I"])
     ssid = _airport_field(airport_output, "SSID")
+
+    wdutil_output = ""
     if not ssid:
-        networksetup = _run_text(["networksetup", "-getairportnetwork", "en0"])
-        if ":" in networksetup:
-            ssid = networksetup.split(":", 1)[1].strip()
+        wdutil_output = _run_text(["wdutil", "info"])
+        wdutil_info = _parse_wdutil_info(wdutil_output)
+        if wdutil_info:
+            return wdutil_info
+
+    if not ssid:
+        for interface in _darwin_wifi_interfaces():
+            networksetup = _run_text(["networksetup", "-getairportnetwork", interface])
+            if ":" in networksetup:
+                ssid = networksetup.split(":", 1)[1].strip()
+                break
     if not ssid:
         return None
 
     channel = _airport_field(airport_output, "channel")
     signal = _airport_field(airport_output, "agrCtlRSSI")
-    security = _darwin_security_for_ssid(ssid)
+    security = _darwin_security_for_ssid(ssid) or _wdutil_field(wdutil_output, "Security")
 
     return WiFiInfo(
         ssid=ssid,
@@ -131,6 +141,42 @@ def _airport_field(output: str, name: str) -> str:
     pattern = rf"^\s*{re.escape(name)}:\s*(.+?)\s*$"
     match = re.search(pattern, output, flags=re.MULTILINE)
     return match.group(1).strip() if match else ""
+
+
+def _parse_wdutil_info(output: str) -> WiFiInfo | None:
+    ssid = _wdutil_field(output, "SSID")
+    if not ssid:
+        return None
+
+    return WiFiInfo(
+        ssid=ssid,
+        encryption=_normalise_encryption(_wdutil_field(output, "Security")),
+        signal_dbm=_int_or_none(_wdutil_field(output, "RSSI").replace("dBm", "")),
+        band=_band_from_channel(_wdutil_field(output, "Channel")),
+        hidden=False,
+    )
+
+
+def _wdutil_field(output: str, name: str) -> str:
+    pattern = rf"^\s*{re.escape(name)}\s*:\s*(.+?)\s*$"
+    match = re.search(pattern, output or "", flags=re.MULTILINE | re.IGNORECASE)
+    return match.group(1).strip() if match else ""
+
+
+def _darwin_wifi_interfaces() -> list[str]:
+    output = _run_text(["networksetup", "-listallhardwareports"])
+    interfaces: list[str] = []
+    current_port = ""
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Hardware Port:"):
+            current_port = stripped.split(":", 1)[1].strip().lower()
+        elif stripped.startswith("Device:") and current_port in {"wi-fi", "airport"}:
+            interfaces.append(stripped.split(":", 1)[1].strip())
+
+    if "en0" not in interfaces:
+        interfaces.append("en0")
+    return interfaces
 
 
 def _darwin_security_for_ssid(ssid: str) -> str:
@@ -213,6 +259,14 @@ def _band_from_frequency(value: str):
 
 
 def _band_from_channel(value: str):
+    lower = (value or "").lower().replace(" ", "")
+    if "2.4ghz" in lower or "2ghz" in lower:
+        return "2.4GHz"
+    if "5ghz" in lower:
+        return "5GHz"
+    if "6ghz" in lower:
+        return "6GHz"
+
     match = re.search(r"\d+", value or "")
     if not match:
         return "UNKNOWN"
@@ -220,7 +274,7 @@ def _band_from_channel(value: str):
     if 1 <= channel <= 14:
         return "2.4GHz"
     if 32 <= channel <= 177:
-        return "5GHz" if channel < 131 else "6GHz"
+        return "5GHz"
     return "UNKNOWN"
 
 
