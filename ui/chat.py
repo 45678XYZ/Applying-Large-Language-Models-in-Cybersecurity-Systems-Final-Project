@@ -7,9 +7,8 @@ from collections.abc import Callable
 import streamlit as st
 
 from agent import SecurityAgent
-from agent.reporter import assemble_report
 from models import ScanReport
-from scripts.golden_fixtures import golden_findings, golden_network
+from scripts.demo_scenarios import build_demo_report, scenario_choices
 from ui.report_view import render_report
 
 ProgressSink = Callable[[str], None]
@@ -38,18 +37,45 @@ def _init_state() -> None:
     st.session_state.setdefault("report", None)
     st.session_state.setdefault("agent", None)
     st.session_state.setdefault("messages", [])
+    _load_query_demo()
+
+
+def _load_query_demo() -> None:
+    scenario_id = st.query_params.get("demo")
+    if not scenario_id or st.session_state.report is not None:
+        return
+
+    try:
+        report = build_demo_report(scenario_id)
+    except ValueError:
+        st.warning(f"Unknown demo scenario: {scenario_id}")
+        return
+
+    st.session_state.report = report
+    st.session_state.agent = None
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": (
+                f"Demo report loaded with grade {report.overall_grade}. "
+                "Use it to validate the report layout and screenshots."
+            ),
+        }
+    ]
 
 
 def _render_sidebar(create_agent: AgentFactory) -> None:
     with st.sidebar:
         st.header("Run")
-        st.write("Use a live scan for the demo network, or load the deterministic fixture.")
+        st.write("Use a live scan for the demo network, or load a deterministic fixture.")
 
         if st.button("Start Scan", type="primary", use_container_width=True):
             _run_live_scan(create_agent)
 
+        choices = scenario_choices()
+        selected_label = st.selectbox("Demo scenario", list(choices), index=0)
         if st.button("Load Demo Report", use_container_width=True):
-            _load_demo_report(create_agent)
+            _load_demo_report(create_agent, choices[selected_label])
 
         if st.button("Reset", use_container_width=True):
             st.session_state.report = None
@@ -100,9 +126,8 @@ def _run_live_scan(create_agent: AgentFactory) -> None:
     st.rerun()
 
 
-def _load_demo_report(create_agent: AgentFactory) -> None:
-    network, wifi, router, devices = golden_network()
-    report = assemble_report(network, wifi, router, devices, golden_findings())
+def _load_demo_report(create_agent: AgentFactory, scenario_id: str) -> None:
+    report = build_demo_report(scenario_id)
     agent: SecurityAgent | None = None
 
     try:
@@ -118,7 +143,7 @@ def _load_demo_report(create_agent: AgentFactory) -> None:
             "role": "assistant",
             "content": (
                 f"Demo report loaded with grade {report.overall_grade}. "
-                "Use it to validate the report layout and Q&A flow."
+                "Use it to validate the report layout, screenshots, and Q&A flow."
             ),
         }
     ]

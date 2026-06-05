@@ -1,0 +1,147 @@
+{
+  "generated_at": "2026-06-05T11:20:52.258414",
+  "network": {
+    "local_ip": "192.168.30.50",
+    "subnet_cidr": "192.168.30.0/24",
+    "gateway": "192.168.30.1",
+    "dns_servers": [
+      "192.168.30.1",
+      "8.8.8.8"
+    ],
+    "interface": "en0",
+    "is_wireless": true
+  },
+  "wifi": {
+    "ssid": "OldHome",
+    "encryption": "WPA2",
+    "signal_dbm": -70,
+    "band": "2.4GHz",
+    "hidden": false
+  },
+  "router": {
+    "gateway_ip": "192.168.30.1",
+    "model": "BusyBox gateway",
+    "firmware_version": "1.19.4",
+    "http_server_header": "BusyBox httpd 1.19.4",
+    "admin_panel_exposed": true,
+    "upnp_enabled": true,
+    "telnet_open": true,
+    "ssh_open": false,
+    "dns_rebinding_protection": null
+  },
+  "devices": [
+    {
+      "ip": "192.168.30.1",
+      "mac": null,
+      "hostname": "old-router.local",
+      "vendor": "BusyBox",
+      "os_guess": null,
+      "device_type": null,
+      "ports": [
+        {
+          "number": 23,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "telnet",
+          "product": "BusyBox telnetd",
+          "version": "1.19.4"
+        },
+        {
+          "number": 80,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "http",
+          "product": "BusyBox httpd",
+          "version": "1.19.4"
+        },
+        {
+          "number": 1900,
+          "protocol": "udp",
+          "state": "open",
+          "service": "upnp",
+          "product": "MiniUPnP",
+          "version": "1.8"
+        }
+      ],
+      "is_gateway": true
+    },
+    {
+      "ip": "192.168.30.18",
+      "mac": null,
+      "hostname": "nas.local",
+      "vendor": "QNAP",
+      "os_guess": null,
+      "device_type": "NAS",
+      "ports": [
+        {
+          "number": 445,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "microsoft-ds",
+          "product": "Samba",
+          "version": null
+        }
+      ],
+      "is_gateway": false
+    }
+  ],
+  "findings": [
+    {
+      "dimension": "router_vulnerability",
+      "severity": "high",
+      "title": "Router firmware matches a high-severity BusyBox CVE",
+      "description": "The gateway exposes BusyBox httpd 1.19.4, which matches a high-severity CVE returned by the knowledge base.",
+      "affected": "192.168.30.1 port 80/tcp",
+      "related_cves": [
+        {
+          "cve_id": "CVE-2018-5371",
+          "cvss_score": 8.8,
+          "cvss_severity": "HIGH",
+          "description": "BusyBox-based routers can mishandle crafted TCP packets, exposing older firmware to denial-of-service or worse.",
+          "affected_products": [],
+          "published": null,
+          "references": []
+        }
+      ],
+      "recommendation": "Upgrade or replace the router firmware before the demo network is reused."
+    },
+    {
+      "dimension": "remote_attack_surface",
+      "severity": "high",
+      "title": "Telnet is open on the gateway",
+      "description": "BusyBox telnetd is reachable on 23/tcp. Telnet sends credentials without encryption and is frequently targeted by automated attacks.",
+      "affected": "192.168.30.1 port 23/tcp",
+      "related_cves": [],
+      "recommendation": "Disable Telnet and use a hardened SSH or local-only admin path instead."
+    },
+    {
+      "dimension": "remote_attack_surface",
+      "severity": "high",
+      "title": "UPnP can open WAN ports automatically",
+      "description": "MiniUPnP 1.8 is reachable on UDP 1900, allowing LAN devices to request inbound port forwards without manual review.",
+      "affected": "192.168.30.1 port 1900/udp",
+      "related_cves": [],
+      "recommendation": "Disable UPnP unless a documented device needs it."
+    },
+    {
+      "dimension": "wifi_encryption",
+      "severity": "medium",
+      "title": "Weak Wi-Fi posture on the router SSID",
+      "description": "OldHome still uses WPA2 on a 2.4GHz-only SSID with a weak signal margin.",
+      "affected": "SSID \"OldHome\"",
+      "related_cves": [],
+      "recommendation": "Move the SSID to WPA3 or WPA2/WPA3 mixed mode and review the passphrase."
+    },
+    {
+      "dimension": "network_isolation",
+      "severity": "medium",
+      "title": "NAS shares the router subnet",
+      "description": "The NAS sits on the same subnet as the vulnerable gateway, so a router compromise can immediately reach file-sharing services.",
+      "affected": "192.168.30.0/24",
+      "related_cves": [],
+      "recommendation": "Put storage devices behind a management VLAN or host firewall rules."
+    }
+  ],
+  "overall_grade": "D",
+  "summary_markdown": "# Home Network Security Audit Report\n\n**Generated:** 2026-06-05 11:20  \n**Overall grade:** D — At risk  \n**Devices discovered:** 2 | High: 3 · Medium: 2 · Low: 0\n\n## Network Summary\n\n- **Local host:** 192.168.30.50 (192.168.30.0/24) on en0 (wireless)\n- **Gateway:** 192.168.30.1\n- **DNS:** 192.168.30.1, 8.8.8.8\n- **Wi-Fi:** SSID \"OldHome\" · WPA2 · 2.4GHz\n- **Router:** BusyBox gateway · firmware 1.19.4 · admin panel exposed (at 192.168.30.1)\n\n## Devices\n\n- **192.168.30.1** — old-router.local [gateway] · 3 open: 23/tcp telnet, 80/tcp http, 1900/udp upnp\n- **192.168.30.18** — nas.local · 1 open: 445/tcp microsoft-ds\n\n## Findings\n\n### 🔴 High\n\n1. **Router firmware matches a high-severity BusyBox CVE** — 192.168.30.1 port 80/tcp\n   The gateway exposes BusyBox httpd 1.19.4, which matches a high-severity CVE returned by the knowledge base.\n   *Related CVEs:* CVE-2018-5371 (CVSS 8.8)\n   *Recommendation:* Upgrade or replace the router firmware before the demo network is reused.\n\n2. **Telnet is open on the gateway** — 192.168.30.1 port 23/tcp\n   BusyBox telnetd is reachable on 23/tcp. Telnet sends credentials without encryption and is frequently targeted by automated attacks.\n   *Recommendation:* Disable Telnet and use a hardened SSH or local-only admin path instead.\n\n3. **UPnP can open WAN ports automatically** — 192.168.30.1 port 1900/udp\n   MiniUPnP 1.8 is reachable on UDP 1900, allowing LAN devices to request inbound port forwards without manual review.\n   *Recommendation:* Disable UPnP unless a documented device needs it.\n\n### 🟡 Medium\n\n1. **Weak Wi-Fi posture on the router SSID** — SSID \"OldHome\"\n   OldHome still uses WPA2 on a 2.4GHz-only SSID with a weak signal margin.\n   *Recommendation:* Move the SSID to WPA3 or WPA2/WPA3 mixed mode and review the passphrase.\n\n2. **NAS shares the router subnet** — 192.168.30.0/24\n   The NAS sits on the same subnet as the vulnerable gateway, so a router compromise can immediately reach file-sharing services.\n   *Recommendation:* Put storage devices behind a management VLAN or host firewall rules.\n\n## Risk Dimensions\n\n- **Router vulnerability:** 🔴 High (1 finding)\n- **Wi-Fi encryption:** 🟡 Medium (1 finding)\n- **IoT exposure:** ✅ no issues found\n- **Network isolation:** 🟡 Medium (1 finding)\n- **Remote attack surface:** 🔴 High (2 findings)\n\n## Prioritised Remediation\n\n1. 🔴 Upgrade or replace the router firmware before the demo network is reused.\n2. 🔴 Disable Telnet and use a hardened SSH or local-only admin path instead.\n3. 🔴 Disable UPnP unless a documented device needs it.\n4. 🟡 Move the SSID to WPA3 or WPA2/WPA3 mixed mode and review the passphrase.\n5. 🟡 Put storage devices behind a management VLAN or host firewall rules."
+}
