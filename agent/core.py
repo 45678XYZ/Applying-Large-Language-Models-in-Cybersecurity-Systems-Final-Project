@@ -112,6 +112,14 @@ class SecurityAgent:
         )
         self._emit(f"Found {len(devices)} device(s).")
 
+        # The scanner can't know which host is the gateway (it never sees the
+        # routing table), so flag it here — port_risk relies on `is_gateway` to
+        # apply its gentler gateway-service baselines (e.g. UPnP = medium, not
+        # high), and the report/UI mark the device as the gateway.
+        for device in devices:
+            if device.ip == network.gateway:
+                device.is_gateway = True
+
         self._emit(f"Probing the router at {network.gateway}…")
         router = self._safe("router probe", lambda: check_router_info(network.gateway), None)
 

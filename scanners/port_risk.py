@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Protocol
 
 from models import Device, Port, RiskDimension, RiskFinding, Severity
@@ -258,11 +259,17 @@ def _baseline_for(port: Port, device: Device) -> tuple[Severity, RiskDimension, 
 
 def _adjust_severity(base: Severity, hits: list[dict[str, Any]]) -> Severity:
     text = " ".join(str(hit.get("text", "")) for hit in hits).lower()
-    if any(term in text for term in _HIGH_SIGNAL_TERMS):
+    if any(_term_present(term, text) for term in _HIGH_SIGNAL_TERMS):
         return _max_severity(base, "high")
-    if any(term in text for term in _MEDIUM_SIGNAL_TERMS):
+    if any(_term_present(term, text) for term in _MEDIUM_SIGNAL_TERMS):
         return _max_severity(base, "medium")
     return base
+
+
+def _term_present(term: str, text: str) -> bool:
+    """Whole-word match so a short signal like "rce" does not fire inside an
+    unrelated word ("source", "resource", "force") in the retrieved KB text."""
+    return re.search(rf"\b{re.escape(term)}\b", text) is not None
 
 
 def _max_severity(a: Severity, b: Severity) -> Severity:
