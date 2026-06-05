@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-06-05T11:20:52.255403",
+  "network": {
+    "local_ip": "192.168.10.25",
+    "subnet_cidr": "192.168.10.0/24",
+    "gateway": "192.168.10.1",
+    "dns_servers": [
+      "192.168.10.1",
+      "1.1.1.1"
+    ],
+    "interface": "en0",
+    "is_wireless": true
+  },
+  "wifi": {
+    "ssid": "Home-WPA3",
+    "encryption": "WPA3",
+    "signal_dbm": -45,
+    "band": "5GHz",
+    "hidden": false
+  },
+  "router": {
+    "gateway_ip": "192.168.10.1",
+    "model": "Modern home gateway",
+    "firmware_version": "2026.05",
+    "http_server_header": "nginx",
+    "admin_panel_exposed": false,
+    "upnp_enabled": false,
+    "telnet_open": false,
+    "ssh_open": false,
+    "dns_rebinding_protection": null
+  },
+  "devices": [
+    {
+      "ip": "192.168.10.1",
+      "mac": null,
+      "hostname": "gateway.local",
+      "vendor": "ExampleNet",
+      "os_guess": null,
+      "device_type": null,
+      "ports": [
+        {
+          "number": 53,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "domain",
+          "product": null,
+          "version": null
+        },
+        {
+          "number": 443,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "https",
+          "product": "nginx",
+          "version": null
+        }
+      ],
+      "is_gateway": true
+    },
+    {
+      "ip": "192.168.10.31",
+      "mac": null,
+      "hostname": "workstation.local",
+      "vendor": "Apple",
+      "os_guess": "macOS",
+      "device_type": null,
+      "ports": [],
+      "is_gateway": false
+    }
+  ],
+  "findings": [],
+  "overall_grade": "A",
+  "summary_markdown": "# Home Network Security Audit Report\n\n**Generated:** 2026-06-05 11:20  \n**Overall grade:** A — Secure  \n**Devices discovered:** 2 | High: 0 · Medium: 0 · Low: 0\n\n## Network Summary\n\n- **Local host:** 192.168.10.25 (192.168.10.0/24) on en0 (wireless)\n- **Gateway:** 192.168.10.1\n- **DNS:** 192.168.10.1, 1.1.1.1\n- **Wi-Fi:** SSID \"Home-WPA3\" · WPA3 · 5GHz\n- **Router:** Modern home gateway · firmware 2026.05 (at 192.168.10.1)\n\n## Devices\n\n- **192.168.10.1** — gateway.local [gateway] · 2 open: 53/tcp domain, 443/tcp https\n- **192.168.10.31** — workstation.local [macOS] · no open ports\n\n## Findings\n\nNo risks identified — the network looks clean.\n\n## Risk Dimensions\n\n- **Router vulnerability:** ✅ no issues found\n- **Wi-Fi encryption:** ✅ no issues found\n- **IoT exposure:** ✅ no issues found\n- **Network isolation:** ✅ no issues found\n- **Remote attack surface:** ✅ no issues found"
+}

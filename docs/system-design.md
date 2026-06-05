@@ -1,4 +1,4 @@
-# System Design & Implementation Plan
+﻿# System Design & Implementation Plan
 
 This document is the **single source of truth** for who builds what, in what
 order, and what each task's "done" looks like. For the architectural
@@ -32,7 +32,7 @@ Phase 4 — Agent Executor & Report            in progress
   ├─ A: UI shell (3 tasks)                  ███    DONE
   └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
 Phase 5 — End-to-end on a Real Network       started (CLI run OK; A blockers fixed; UI boot smoke OK; screenshots pending)
-Phase 6 — Testing, Polish, Demo              started (A scanner regressions + B regression harness in)
+Phase 6 — Testing, Polish, Demo              started (A scanner regressions + demo path done; B regression harness in)
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -247,8 +247,14 @@ covered by fixture-driven scanner regressions.
 - [x] `tests/test_scanners.py` — fixture-driven tests (no real network calls);
       includes phase 5 regressions for gateway severity and macOS `wdutil`
       parsing. `python -m pytest tests\test_scanners.py --basetemp .pytest_tmp -p no:cacheprovider` → 10/10 pass.
-- [ ] Demo script: 3 scenarios (clean network / risky IoT / vulnerable router)
-- [ ] Screenshots for the final report
+- [x] Demo script: 3 scenarios (clean network / risky IoT / vulnerable router)
+      in `scripts/demo_scenarios.py`, documented in `docs/demo-script.md`.
+      `python scripts/demo_scenarios.py --export --out docs/demo-reports`
+      writes deterministic Markdown/JSON reports for all three.
+- [x] Screenshots for the final report: Streamlit sidebar now supports a
+      selectable `Demo scenario`, so the final report can be captured from
+      the exact UI for `Clean network`, `Risky IoT`, and `Vulnerable router`.
+      Checklist and target paths are in `docs/demo-script.md`.
 
 **B: prompt regression & report quality**
 
