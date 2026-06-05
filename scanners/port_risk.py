@@ -186,14 +186,11 @@ def _finding_from_port(
 
     affected = _affected_label(device, port)
     source_line = _source_line(hits)
-    context = _context_excerpt(hits)
 
     description = (
         f"{affected} exposes {_service_label(port)}. "
         f"{_risk_sentence(severity, dimension)}"
     )
-    if context:
-        description += f" Retrieved KB context: {context}"
     if source_line:
         description += f" Sources: {source_line}."
 
@@ -299,11 +296,3 @@ def _source_line(hits: list[dict[str, Any]]) -> str:
         if len(sources) >= 3:
             break
     return ", ".join(sources)
-
-
-def _context_excerpt(hits: list[dict[str, Any]]) -> str:
-    for hit in hits:
-        text = " ".join(str(hit.get("text", "")).split())
-        if text:
-            return text[:260] + ("..." if len(text) > 260 else "")
-    return ""
