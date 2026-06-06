@@ -184,6 +184,9 @@ def _risky_iot_report() -> ScanReport:
             ports=[],
         ),
     ]
+    # NOTE: these four mediums put the grade at the `medium >= 4 -> C` threshold
+    # (see reporter.grade_from_findings). Keep at least four medium findings, or
+    # the grade silently drops to B and `build_demo_report`'s assertion fires.
     findings = [
         RiskFinding(
             dimension="wifi_encryption",

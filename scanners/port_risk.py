@@ -135,23 +135,6 @@ _PORT_BASELINE: dict[int, tuple[Severity, RiskDimension, str, str]] = {
     ),
 }
 
-_HIGH_SIGNAL_TERMS = {
-    "default password",
-    "weak password",
-    "unauthorized",
-    "remote code execution",
-    "rce",
-}
-_MEDIUM_SIGNAL_TERMS = {
-    "insecure",
-    "misconfiguration",
-    "credential",
-    "authentication",
-    "firmware",
-    "privacy",
-}
-
-
 class PortRiskRetriever(Protocol):
     """Retriever surface frozen at SYNC 1."""
 
@@ -200,18 +183,14 @@ def _finding_from_port(
     hits: list[dict[str, Any]],
 ) -> RiskFinding:
     severity, dimension, title, recommendation = _baseline_for(port, device)
-    severity = _adjust_severity(severity, hits)
 
     affected = _affected_label(device, port)
     source_line = _source_line(hits)
-    context = _context_excerpt(hits)
 
     description = (
         f"{affected} exposes {_service_label(port)}. "
         f"{_risk_sentence(severity, dimension)}"
     )
-    if context:
-        description += f" Retrieved KB context: {context}"
     if source_line:
         description += f" Sources: {source_line}."
 
@@ -256,25 +235,11 @@ def _baseline_for(port: Port, device: Device) -> tuple[Severity, RiskDimension, 
     )
 
 
-def _adjust_severity(base: Severity, hits: list[dict[str, Any]]) -> Severity:
-    text = " ".join(str(hit.get("text", "")) for hit in hits).lower()
-    if any(term in text for term in _HIGH_SIGNAL_TERMS):
-        return _max_severity(base, "high")
-    if any(term in text for term in _MEDIUM_SIGNAL_TERMS):
-        return _max_severity(base, "medium")
-    return base
-
-
-def _max_severity(a: Severity, b: Severity) -> Severity:
-    order: dict[Severity, int] = {"info": 0, "low": 1, "medium": 2, "high": 3}
-    return a if order[a] >= order[b] else b
-
-
 def _risk_sentence(severity: Severity, dimension: RiskDimension) -> str:
     if severity == "high":
         return "This is a high-priority exposure because the service is commonly abused when reachable on a LAN."
     if severity == "medium":
-        return "This increases the device's attack surface and should be reviewed before the final report."
+        return "This increases the device's attack surface and is worth reviewing and tightening."
     if dimension == "iot_exposure":
         return "This is mainly a discovery or IoT segmentation concern unless the service lacks authentication."
     return "This appears lower risk, but it should still match an intentional service policy."
@@ -331,11 +296,3 @@ def _source_line(hits: list[dict[str, Any]]) -> str:
         if len(sources) >= 3:
             break
     return ", ".join(sources)
-
-
-def _context_excerpt(hits: list[dict[str, Any]]) -> str:
-    for hit in hits:
-        text = " ".join(str(hit.get("text", "")).split())
-        if text:
-            return text[:260] + ("..." if len(text) > 260 else "")
-    return ""

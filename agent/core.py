@@ -16,8 +16,9 @@ computes the deterministic A–F grade and Markdown.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
 
 ProgressCallback = Callable[[str], None]
+_T = TypeVar("_T")
 
 
 class _SynthesizedFindings(BaseModel):
@@ -84,31 +86,56 @@ class SecurityAgent:
     # ── full scan ────────────────────────────────────────────────────────
 
     def run_full_scan(self) -> ScanReport:
-        """Run the fixed scan pipeline and assemble a `ScanReport`."""
+        """Run the fixed scan pipeline and assemble a `ScanReport`.
+
+        Each scanner step is isolated by `_safe`: if one fails (e.g. nmap is
+        missing, a probe times out), it degrades to an empty/None result and the
+        scan still assembles a report from whatever was collected, rather than
+        crashing mid-demo. Reading the local network config is the one hard
+        prerequisite — without it there is nothing to scan.
+        """
         self._emit("Reading local network configuration…")
         network = get_network_info()
 
         self._emit("Checking Wi-Fi security…")
-        wifi = get_wifi_security()
+        wifi = self._safe("Wi-Fi check", get_wifi_security, None)
 
         self._emit(f"Scanning {network.subnet_cidr} for devices…")
-        devices = scan_network(
-            network.subnet_cidr,
-            top_ports=settings.nmap_top_ports,
-            do_os_detection=False,  # §7: OS detection off by default (avoids sudo)
+        devices = self._safe(
+            "device scan",
+            lambda: scan_network(
+                network.subnet_cidr,
+                top_ports=settings.nmap_top_ports,
+                do_os_detection=False,  # §7: OS detection off by default (avoids sudo)
+            ),
+            [],
         )
         self._emit(f"Found {len(devices)} device(s).")
 
+        # The scanner can't know which host is the gateway (it never sees the
+        # routing table), so flag it here — port_risk relies on `is_gateway` to
+        # apply its gentler gateway-service baselines (e.g. UPnP = medium, not
+        # high), and the report/UI mark the device as the gateway.
+        for device in devices:
+            if device.ip == network.gateway:
+                device.is_gateway = True
+
         self._emit(f"Probing the router at {network.gateway}…")
-        router = check_router_info(network.gateway)
+        router = self._safe("router probe", lambda: check_router_info(network.gateway), None)
 
         self._emit("Looking up known CVEs…")
-        cves = self._gather_cves(devices, router)
+        cves = self._safe("CVE lookup", lambda: self._gather_cves(devices, router), {})
 
         self._emit("Assessing open-port risks…")
         port_findings: list[RiskFinding] = []
         for device in devices:
-            port_findings.extend(check_open_ports_risk(device, retriever=self._retriever))
+            port_findings.extend(
+                self._safe(
+                    f"port-risk check for {device.ip}",
+                    lambda device=device: check_open_ports_risk(device, retriever=self._retriever),
+                    [],
+                )
+            )
 
         self._emit("Synthesising findings…")
         findings = port_findings + self._synthesize_findings(
@@ -140,6 +167,15 @@ class SecurityAgent:
     def _emit(self, message: str) -> None:
         if self._on_event is not None:
             self._on_event(message)
+
+    def _safe(self, label: str, fn: Callable[[], _T], default: _T) -> _T:
+        """Run one scan step in isolation. On failure, emit an event and return
+        `default` so a single broken scanner never sinks the whole scan."""
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001 - degrade, never crash the pipeline
+            self._emit(f"⚠ {label} failed ({exc}); continuing with partial data.")
+            return default
 
     def _gather_cves(self, devices: list[Device], router: RouterInfo | None) -> dict[str, list[CVE]]:
         """Look up CVEs per identifiable product: device vendors, the router
@@ -196,7 +232,11 @@ class SecurityAgent:
         context = self._synthesis_context(network, wifi, router, devices, cves, port_findings)
         try:
             structured = self._llm.with_structured_output(_SynthesizedFindings)
-            result = structured.invoke(self._messages(REPORT_GENERATION_PROMPT + context))
+            with warnings.catch_warnings():
+                # with_structured_output emits a benign pydantic serializer
+                # UserWarning for the wrapped schema; silence just that noise.
+                warnings.simplefilter("ignore", UserWarning)
+                result = structured.invoke(self._messages(REPORT_GENERATION_PROMPT + context))
             return list(result.findings)
         except Exception as exc:  # noqa: BLE001 - never let synthesis sink the scan
             self._emit(f"(LLM synthesis unavailable, using port findings only: {exc})")

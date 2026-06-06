@@ -13,6 +13,11 @@ The finding mix lands on overall grade **C** — the same 2-high / 3-medium /
 anchor. `golden_scan.py` checks the deterministic pipeline reproduces it;
 `qa_regression.py` asks follow-up questions against it and checks the answers
 stay grounded in exactly these facts.
+
+This module is for the **regression suite only**. The demo UI's deterministic
+reports come from a separate module — `scripts/demo_scenarios.py` (A's
+`build_demo_report` / `scenario_choices`) — so the two are independent: editing
+these fixtures will not change the demo, and vice versa.
 """
 
 from __future__ import annotations
