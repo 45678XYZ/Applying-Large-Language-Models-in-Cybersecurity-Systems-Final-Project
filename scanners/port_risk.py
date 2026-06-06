@@ -239,7 +239,7 @@ def _risk_sentence(severity: Severity, dimension: RiskDimension) -> str:
     if severity == "high":
         return "This is a high-priority exposure because the service is commonly abused when reachable on a LAN."
     if severity == "medium":
-        return "This increases the device's attack surface and should be reviewed before the final report."
+        return "This increases the device's attack surface and is worth reviewing and tightening."
     if dimension == "iot_exposure":
         return "This is mainly a discovery or IoT segmentation concern unless the service lacks authentication."
     return "This appears lower risk, but it should still match an intentional service policy."
