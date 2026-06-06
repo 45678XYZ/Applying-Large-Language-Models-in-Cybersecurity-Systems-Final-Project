@@ -15,7 +15,7 @@ natural-language Q&A on the results.
 
 ---
 
-## 1.5. Status Snapshot (updated 2026-06-05)
+## 1.5. Status Snapshot (updated 2026-06-06)
 
 ```
 Phase 0 — Bootstrap                          ✅ DONE
@@ -28,11 +28,11 @@ Phase 2 — Retrieval & Tooling Layer
 Phase 3 — Cross-cutting Glue                 DONE
   ├─ A: port_risk.py (1 task)               █      DONE
   └─ B: tools.py + prompts draft (2)        ██     DONE  ← SYNC 2 ready (B side)
-Phase 4 — Agent Executor & Report            in progress
+Phase 4 — Agent Executor & Report            DONE
   ├─ A: UI shell (3 tasks)                  ███    DONE
-  └─ B: core / reporter / prompt-iter (3)   ██░    core + reporter DONE
-Phase 5 — End-to-end on a Real Network       started (CLI run OK; A blockers fixed; UI boot smoke OK; screenshots pending)
-Phase 6 — Testing, Polish, Demo              started (A scanner regressions + demo path done; B regression harness in)
+  └─ B: core / reporter / prompt-iter (3)   ███    DONE
+Phase 5 — End-to-end on a Real Network       live re-run grade C; UI cold-boot verified; screenshots pending
+Phase 6 — Testing, Polish, Demo              regression suites green (A+B); acceptance #1–#5 met
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -220,8 +220,10 @@ Both members, working together:
       graded `ScanReport` → grounded Q&A (2026-06-04). `--offline` cache mode
       (the §6 fallback) also works.
 - [ ] Re-run through `streamlit run app.py` against the live network and capture screenshots.
-      UI boot smoke returned HTTP 200 on `localhost:8501` (2026-06-05);
-      in-app screenshot capture remains pending.
+      Live pipeline re-run now lands at grade **C** (2 real-CVE highs) with Wi-Fi read
+      as WPA2; `app.py` cold-boot verified headless via Streamlit `AppTest` (no
+      exceptions, report renders) (2026-06-06). In-app screenshot capture is the
+      only open item.
 - [x] Capture failures — triage logged below.
 - [x] Fix the top 3 blockers from that triage.
 
@@ -229,9 +231,9 @@ Both members, working together:
 
 | # | Symptom | Owner | Action |
 | - | ------- | ----- | ------ |
-| 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A | **Done (2026-06-05).** Gateway DNS/HTTP/HTTPS/UPnP now use LAN-specific baselines, and generic "exposed" KB language no longer escalates every port to high. |
+| 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A·B | **Done — live-confirmed F→C (2026-06-06).** A added LAN gateway baselines, but two gaps kept the live grade at F: the gateway device was never flagged `is_gateway`, so those baselines never applied (`abbddd6`), and a substring match (`rce` inside `source`/`resource`) re-escalated every port to high (`7d2cb86`). Both fixed + raw-KB dump removed from descriptions (`c2a8233`) → live re-run is now **C** with only the 2 real-CVE highs. |
 | 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | ✅ **Done & live-confirmed (2026-06-04).** `_gather_cves` now also queries each open port's `product`+`version` from `-sV` (`f026c41`). Re-run cited 10 real KB CVEs across 2 high findings (e.g. CVE-2024-54807 9.8, CVE-2018-5371 8.8) → acceptance #4 met. |
-| 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A | **Done (2026-06-05).** Added `wdutil info` parsing plus dynamic `networksetup` Wi-Fi interface fallback. |
+| 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A·B | **Done — live-confirmed (2026-06-06).** `airport` is gone on macOS 14.4+ and `wdutil`/`networksetup` return a redacted SSID without Location Services, so detection still failed live. Switched to `system_profiler SPAirPortDataType -json` (`fceae45`): it reports Security/Channel/Signal even when only the SSID is redacted → live scan now reads **WPA2 / 5GHz**. Locale-safe (JSON keys) + unit-tested (`7c8708b`). |
 | 4 | Router model/firmware not extracted from a generic BusyBox banner → no router CVE check. | A/B | Known limit (§7.2); low priority. |
 
 **A-side update (2026-06-05):** `port_risk` now uses LAN-specific baselines
@@ -239,6 +241,12 @@ for gateway DNS/HTTP/HTTPS/UPnP and no longer escalates every generic
 "exposed" KB hit to high. macOS Wi-Fi detection now falls back to `wdutil info`
 and dynamically discovered `networksetup` Wi-Fi interfaces. These fixes are
 covered by fixture-driven scanner regressions.
+
+**B follow-up (2026-06-06):** a live re-run showed those weren't yet sufficient
+(grade still **F**, Wi-Fi still undetected). The completing fixes — flag the
+gateway in `core.py`, drop the KB-keyword severity bump, and read Wi-Fi via
+`system_profiler -json` — are detailed in triage #1/#3 above. The live re-run
+now lands at **C** with Wi-Fi read as WPA2.
 
 ### Phase 6 — Testing, Polish, Demo
 
@@ -291,6 +299,12 @@ covered by fixture-driven scanner regressions.
    five-dimension risk breakdown, prioritised remediation steps.
 4. At least one **high-risk** finding cites a real CVE retrieved from the KB.
 5. Three follow-up Q&A turns work, each grounded in the prior scan plus KB.
+
+**Status (2026-06-06): all five met.** #1 verified headless via Streamlit
+`AppTest` (cold boot, no exceptions, report renders); #2 streams through the
+`on_event` callback; #3 and #4 confirmed on the live grade-**C** run (2 real-CVE
+highs in a five-dimension graded report); #5 covered by `qa_regression.py`
+(8/8 grounded). Live-network UI screenshots are the only remaining demo to-do.
 
 ---
 
