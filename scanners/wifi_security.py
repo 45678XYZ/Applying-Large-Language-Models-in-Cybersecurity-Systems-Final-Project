@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import platform
 import re
 import subprocess
@@ -105,6 +106,83 @@ def _parse_iwconfig(output: str) -> WiFiInfo | None:
 
 
 def _darwin_wifi_security() -> WiFiInfo | None:
+    # `system_profiler SPAirPortDataType -json` is the only path that still works
+    # on modern macOS: the `airport` tool was removed in macOS 14.4+. The JSON
+    # keys are locale-independent identifiers (e.g. `spairport_security_mode_
+    # wpa2_personal`), so this survives a non-English GUI too. macOS redacts only
+    # the SSID when Location Services is off; the security mode, channel, and
+    # signal stay readable — exactly what the audit needs (encryption, not name).
+    info = _parse_system_profiler(_run_text(["system_profiler", "SPAirPortDataType", "-json"]))
+    if info:
+        return info
+    return _darwin_legacy_wifi_security()
+
+
+def _parse_system_profiler(output: str) -> WiFiInfo | None:
+    """Parse `system_profiler SPAirPortDataType -json`.
+
+    Reads the current association from locale-independent JSON keys. A redacted
+    or hidden SSID (`_name` == ``<redacted>``) becomes ``ssid=None`` while the
+    encryption posture is still recovered from `spairport_security_mode`.
+    """
+    try:
+        data = json.loads(output)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    net = _find_current_network(data)
+    if net is None:
+        return None
+
+    name = str(net.get("_name", "")).strip()
+    ssid = None if name in {"<redacted>", ""} else name
+    signal_match = re.search(r"-?\d+", str(net.get("spairport_signal_noise", "")))
+    return WiFiInfo(
+        ssid=ssid,
+        encryption=_security_mode_to_encryption(str(net.get("spairport_security_mode", ""))),
+        signal_dbm=int(signal_match.group(0)) if signal_match else None,
+        band=_band_from_channel(str(net.get("spairport_network_channel", ""))),
+        hidden=ssid is None,
+    )
+
+
+def _find_current_network(obj: object) -> dict | None:
+    """Recursively find the `spairport_current_network_information` node that
+    represents an actual association (i.e. one carrying a security mode)."""
+    if isinstance(obj, dict):
+        current = obj.get("spairport_current_network_information")
+        if isinstance(current, dict) and current.get("spairport_security_mode"):
+            return current
+        for value in obj.values():
+            found = _find_current_network(value)
+            if found is not None:
+                return found
+    elif isinstance(obj, list):
+        for item in obj:
+            found = _find_current_network(item)
+            if found is not None:
+                return found
+    return None
+
+
+def _security_mode_to_encryption(mode: str) -> str:
+    """Map a `spairport_security_mode_*` identifier to an encryption label.
+    The identifier is never localized, so this stays correct on any GUI language."""
+    lowered = (mode or "").lower()
+    if "wpa3" in lowered:
+        return "WPA3"
+    if "wpa2" in lowered:
+        return "WPA2"
+    if "wpa" in lowered:
+        return "WPA"
+    if "wep" in lowered:
+        return "WEP"
+    if "none" in lowered or "open" in lowered:
+        return "OPEN"
+    return "UNKNOWN"
+
+
+def _darwin_legacy_wifi_security() -> WiFiInfo | None:
     airport_output = _run_text([_AIRPORT, "-I"])
     ssid = _airport_field(airport_output, "SSID")
 
