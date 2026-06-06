@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import socket
 from pathlib import Path
 
@@ -78,6 +79,51 @@ def test_wifi_security_parses_macos_wdutil_info():
     assert info.encryption == "WPA3"
     assert info.signal_dbm == -51
     assert info.band == "5GHz"
+
+
+def test_wifi_security_parses_macos_system_profiler_json():
+    def _spairport(network: dict) -> str:
+        return json.dumps(
+            {"SPAirPortDataType": [{"spairport_airport_interfaces": [
+                {"_name": "en0", "spairport_current_network_information": network}
+            ]}]}
+        )
+
+    # Location Services off: macOS redacts only the SSID; encryption stays readable.
+    redacted = wifi_security._parse_system_profiler(
+        _spairport({
+            "_name": "<redacted>",
+            "spairport_security_mode": "spairport_security_mode_wpa2_personal",
+            "spairport_network_channel": "149 (5GHz, 80MHz)",
+            "spairport_signal_noise": "-40 dBm / -97 dBm",
+        })
+    )
+    assert redacted is not None
+    assert redacted.ssid is None
+    assert redacted.hidden is True
+    assert redacted.encryption == "WPA2"
+    assert redacted.band == "5GHz"
+    assert redacted.signal_dbm == -40
+
+    # Location Services granted: real SSID, WPA3. The keys are identical on a
+    # non-English macOS (only display labels translate, not these identifiers).
+    named = wifi_security._parse_system_profiler(
+        _spairport({
+            "_name": "HomeLab",
+            "spairport_security_mode": "spairport_security_mode_wpa3_personal",
+            "spairport_network_channel": "36 (5GHz, 80MHz)",
+            "spairport_signal_noise": "-55 dBm / -90 dBm",
+        })
+    )
+    assert named is not None
+    assert named.ssid == "HomeLab"
+    assert named.encryption == "WPA3"
+
+    # No association / malformed input degrades to None (never raises).
+    assert wifi_security._parse_system_profiler("") is None
+    assert wifi_security._parse_system_profiler(
+        json.dumps({"SPAirPortDataType": [{"spairport_airport_interfaces": [{"_name": "en0"}]}]})
+    ) is None
 
 
 def test_router_probe_aggregates_http_and_ports(monkeypatch):
