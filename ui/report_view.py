@@ -109,7 +109,7 @@ def _render_findings_summary(findings: list[RiskFinding]) -> None:
                 "Findings": len(tier),
             }
         )
-    st.dataframe(rows, hide_index=True, use_container_width=True)
+    st.dataframe(rows, hide_index=True, width="stretch")
 
 
 def _render_device_table(devices: list[Device]) -> None:
@@ -131,7 +131,7 @@ def _render_device_table(devices: list[Device]) -> None:
                 "Open ports": _format_ports(open_ports),
             }
         )
-    st.dataframe(rows, hide_index=True, use_container_width=True)
+    st.dataframe(rows, hide_index=True, width="stretch")
 
 
 def _render_findings(findings: list[RiskFinding]) -> None:

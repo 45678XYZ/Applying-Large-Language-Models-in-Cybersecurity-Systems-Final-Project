@@ -69,15 +69,15 @@ def _render_sidebar(create_agent: AgentFactory) -> None:
         st.header("Run")
         st.write("Use a live scan for the demo network, or load a deterministic fixture.")
 
-        if st.button("Start Scan", type="primary", use_container_width=True):
+        if st.button("Start Scan", type="primary", width="stretch"):
             _run_live_scan(create_agent)
 
         choices = scenario_choices()
         selected_label = st.selectbox("Demo scenario", list(choices), index=0)
-        if st.button("Load Demo Report", use_container_width=True):
+        if st.button("Load Demo Report", width="stretch"):
             _load_demo_report(create_agent, choices[selected_label])
 
-        if st.button("Reset", use_container_width=True):
+        if st.button("Reset", width="stretch"):
             st.session_state.report = None
             st.session_state.agent = None
             st.session_state.messages = []
