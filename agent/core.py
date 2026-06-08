@@ -16,6 +16,7 @@ computes the deterministic A–F grade and Markdown.
 
 from __future__ import annotations
 
+import os
 import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, TypeVar
@@ -100,13 +101,21 @@ class SecurityAgent:
         self._emit("Checking Wi-Fi security…")
         wifi = self._safe("Wi-Fi check", get_wifi_security, None)
 
-        self._emit(f"Scanning {network.subnet_cidr} for devices…")
+        # §7: OS fingerprinting (`nmap -O`) needs root, so it stays off by
+        # default to keep the scan sudo-free. When the process *is* already
+        # running as root, enable it automatically — root also lets nmap use
+        # ARP host discovery, so this is exactly when OS data is available.
+        do_os_detection = hasattr(os, "geteuid") and os.geteuid() == 0
+        self._emit(
+            f"Scanning {network.subnet_cidr} for devices…"
+            + (" (with OS detection)" if do_os_detection else "")
+        )
         devices = self._safe(
             "device scan",
             lambda: scan_network(
                 network.subnet_cidr,
                 top_ports=settings.nmap_top_ports,
-                do_os_detection=False,  # §7: OS detection off by default (avoids sudo)
+                do_os_detection=do_os_detection,
             ),
             [],
         )
