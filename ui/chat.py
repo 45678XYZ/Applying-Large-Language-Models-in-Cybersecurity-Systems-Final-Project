@@ -190,10 +190,15 @@ def _render_chat_input() -> None:
         st.markdown(question)
 
     with st.chat_message("assistant"):
-        with st.spinner("Checking the report and knowledge base"):
+        if agent is None:
+            answer = "Q&A is unavailable."
+            st.markdown(answer)
+        else:
             try:
-                answer = agent.ask(question) if agent is not None else "Q&A is unavailable."
+                # write_stream renders chunks as they arrive and returns the
+                # full concatenated text once the stream is exhausted.
+                answer = st.write_stream(agent.ask_stream(question))
             except Exception as exc:  # noqa: BLE001 - keep the UI recoverable.
                 answer = f"Could not answer from the current report: {exc}"
-            st.markdown(answer)
+                st.markdown(answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
