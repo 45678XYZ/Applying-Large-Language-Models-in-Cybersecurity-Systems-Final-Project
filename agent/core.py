@@ -16,8 +16,9 @@ computes the deterministic A–F grade and Markdown.
 
 from __future__ import annotations
 
+import os
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel, Field
@@ -100,13 +101,21 @@ class SecurityAgent:
         self._emit("Checking Wi-Fi security…")
         wifi = self._safe("Wi-Fi check", get_wifi_security, None)
 
-        self._emit(f"Scanning {network.subnet_cidr} for devices…")
+        # §7: OS fingerprinting (`nmap -O`) needs root, so it stays off by
+        # default to keep the scan sudo-free. When the process *is* already
+        # running as root, enable it automatically — root also lets nmap use
+        # ARP host discovery, so this is exactly when OS data is available.
+        do_os_detection = hasattr(os, "geteuid") and os.geteuid() == 0
+        self._emit(
+            f"Scanning {network.subnet_cidr} for devices…"
+            + (" (with OS detection)" if do_os_detection else "")
+        )
         devices = self._safe(
             "device scan",
             lambda: scan_network(
                 network.subnet_cidr,
                 top_ports=settings.nmap_top_ports,
-                do_os_detection=False,  # §7: OS detection off by default (avoids sudo)
+                do_os_detection=do_os_detection,
             ),
             [],
         )
@@ -149,18 +158,40 @@ class SecurityAgent:
 
     # ── Q&A ──────────────────────────────────────────────────────────────
 
+    _NO_REPORT_MESSAGE = (
+        "No scan has been run yet. Start a scan first, then ask me about the results."
+    )
+
     def ask(self, question: str) -> str:
         """Answer a follow-up question grounded in the last scan + KB."""
-        if self._last_report is None:
-            return (
-                "No scan has been run yet. Start a scan first, then ask me about "
-                "the results."
-            )
-        snippets = self._retriever.search(question, k=settings.rag_top_k)
-        answer = self._llm.invoke(
-            self._messages(QA_FOLLOWUP_PROMPT + self._qa_context(question, snippets))
-        )
+        messages = self._qa_messages(question)
+        if messages is None:
+            return self._NO_REPORT_MESSAGE
+        answer = self._llm.invoke(messages)
         return str(getattr(answer, "content", answer))
+
+    def ask_stream(self, question: str) -> Iterator[str]:
+        """Stream the follow-up answer in chunks for incremental UI rendering.
+
+        Mirrors `ask` but uses the LLM token stream so the UI can render the
+        answer as it arrives (`st.write_stream`). Yields a single chunk when no
+        scan has been run yet.
+        """
+        messages = self._qa_messages(question)
+        if messages is None:
+            yield self._NO_REPORT_MESSAGE
+            return
+        for chunk in self._llm.stream(messages):
+            text = getattr(chunk, "content", chunk)
+            if text:
+                yield str(text)
+
+    def _qa_messages(self, question: str) -> list | None:
+        """Build the grounded Q&A prompt messages, or None if no report exists."""
+        if self._last_report is None:
+            return None
+        snippets = self._retriever.search(question, k=settings.rag_top_k)
+        return self._messages(QA_FOLLOWUP_PROMPT + self._qa_context(question, snippets))
 
     # ── internals ────────────────────────────────────────────────────────
 
