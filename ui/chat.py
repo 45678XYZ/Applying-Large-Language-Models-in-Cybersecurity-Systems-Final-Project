@@ -37,6 +37,7 @@ def _init_state() -> None:
     st.session_state.setdefault("report", None)
     st.session_state.setdefault("agent", None)
     st.session_state.setdefault("messages", [])
+    st.session_state.setdefault("scanning", False)
     _load_query_demo()
 
 
@@ -69,19 +70,36 @@ def _render_sidebar(create_agent: AgentFactory) -> None:
         st.header("Run")
         st.write("Use a live scan for the demo network, or load a deterministic fixture.")
 
-        if st.button("Start Scan", type="primary", width="stretch"):
-            _run_live_scan(create_agent)
+        # A live scan blocks the script run, so the buttons can't visually
+        # disable mid-scan. Use a flag instead: the first click flags the scan
+        # and reruns, this rerun draws the buttons disabled and then performs
+        # the scan, which clears the flag when it finishes.
+        scanning = st.session_state.get("scanning", False)
+
+        if st.button(
+            "Scanning…" if scanning else "Start Scan",
+            type="primary",
+            width="stretch",
+            disabled=scanning,
+        ):
+            st.session_state.scanning = True
+            st.rerun()
 
         choices = scenario_choices()
-        selected_label = st.selectbox("Demo scenario", list(choices), index=0)
-        if st.button("Load Demo Report", width="stretch"):
+        selected_label = st.selectbox(
+            "Demo scenario", list(choices), index=0, disabled=scanning
+        )
+        if st.button("Load Demo Report", width="stretch", disabled=scanning):
             _load_demo_report(create_agent, choices[selected_label])
 
-        if st.button("Reset", width="stretch"):
+        if st.button("Reset", width="stretch", disabled=scanning):
             st.session_state.report = None
             st.session_state.agent = None
             st.session_state.messages = []
             st.rerun()
+
+        if scanning:
+            _run_live_scan(create_agent)
 
 
 def _render_pre_scan() -> None:
@@ -109,6 +127,7 @@ def _run_live_scan(create_agent: AgentFactory) -> None:
         except Exception as exc:  # noqa: BLE001 - UI should report bootstrap/scan failures.
             status.update(label="Scan failed", state="error")
             st.error(f"Could not complete the scan: {exc}")
+            st.session_state.scanning = False
             return
 
         st.session_state.agent = agent
@@ -123,6 +142,7 @@ def _run_live_scan(create_agent: AgentFactory) -> None:
             }
         ]
         status.update(label=f"Scan complete - grade {report.overall_grade}", state="complete")
+    st.session_state.scanning = False
     st.rerun()
 
 
