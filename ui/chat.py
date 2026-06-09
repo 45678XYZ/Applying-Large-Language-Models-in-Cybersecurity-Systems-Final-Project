@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 
 import streamlit as st
 
@@ -196,9 +196,31 @@ def _render_chat_input() -> None:
         else:
             try:
                 # write_stream renders chunks as they arrive and returns the
-                # full concatenated text once the stream is exhausted.
-                answer = st.write_stream(agent.ask_stream(question))
+                # full concatenated text once the stream is exhausted; the
+                # spinner covers the retrieval + first-token wait before it.
+                answer = st.write_stream(
+                    _spinner_until_first_chunk(agent.ask_stream(question))
+                )
             except Exception as exc:  # noqa: BLE001 - keep the UI recoverable.
                 answer = f"Could not answer from the current report: {exc}"
                 st.markdown(answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
+
+
+def _spinner_until_first_chunk(
+    stream: Iterable[str],
+    message: str = "Checking the report and knowledge base",
+) -> Iterator[str]:
+    """Show a spinner until the first streamed chunk arrives, then pass through.
+
+    The first `next()` is where the agent does its RAG retrieval and waits for
+    the first token, so wrapping just that call keeps the spinner visible during
+    the pre-stream latency without blocking the token-by-token render after it.
+    """
+    iterator = iter(stream)
+    with st.spinner(message):
+        first = next(iterator, None)
+    if first is None:
+        return
+    yield first
+    yield from iterator
