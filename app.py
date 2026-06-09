@@ -135,7 +135,7 @@ def _inject_styles() -> None:
             border: 1px solid rgba(99, 102, 241, 0.28);
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.02));
         }
-        .welcome-icon { font-size: 2.4rem; line-height: 1; }
+        .welcome-icon { color: var(--brand); line-height: 0; display: inline-flex; }
         .welcome-text { font-size: 1rem; color: inherit; opacity: 0.85; line-height: 1.5; }
         .feature-card {
             height: 100%; border: 1px solid rgba(128, 128, 128, 0.22); border-radius: 12px;
@@ -143,7 +143,7 @@ def _inject_styles() -> None:
             transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
         .feature-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
-        .feature-icon { font-size: 1.6rem; }
+        .feature-icon { color: var(--brand); line-height: 0; margin-bottom: 0.15rem; display: inline-flex; }
         .feature-title { font-weight: 700; margin: 0.45rem 0 0.3rem; color: inherit; }
         .feature-body { font-size: 0.85rem; color: inherit; opacity: 0.7; line-height: 1.45; }
         .defaults-label {

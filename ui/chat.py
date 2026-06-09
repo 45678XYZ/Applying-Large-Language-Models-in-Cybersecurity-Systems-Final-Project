@@ -14,6 +14,30 @@ from ui.report_view import render_report
 ProgressSink = Callable[[str], None]
 AgentFactory = Callable[[ProgressSink | None], SecurityAgent]
 
+# Inline line icons (Lucide paths) — replace emoji so the landing page stays
+# clean and picks up the brand colour via `currentColor` on both themes.
+_ICON_SHIELD = (
+    '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6'
+    'a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5'
+    'a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'
+)
+_ICON_SEARCH = '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'
+_ICON_DATABASE = (
+    '<ellipse cx="12" cy="5" rx="9" ry="3"/>'
+    '<path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'
+)
+_ICON_CHART = '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'
+_ICON_CHAT = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'
+
+
+def _icon(paths: str, size: int = 26) -> str:
+    """Wrap Lucide path data in an SVG that inherits the parent's text colour."""
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+        f'stroke-linecap="round" stroke-linejoin="round">{paths}</svg>'
+    )
+
 
 def render_chat(create_agent: AgentFactory) -> None:
     """Mount the scan CTA, report surface, and Q&A history."""
@@ -105,7 +129,7 @@ def _render_sidebar(create_agent: AgentFactory) -> None:
 def _render_pre_scan() -> None:
     st.markdown(
         '<div class="welcome-band">'
-        '<div class="welcome-icon">🛡️</div>'
+        f'<div class="welcome-icon">{_icon(_ICON_SHIELD, 40)}</div>'
         '<div class="welcome-text"><b>Pick a path to begin.</b> Click '
         "<b>Start Scan</b> in the sidebar to audit your live network, or "
         "<b>Load Demo Report</b> to explore a deterministic example.</div>"
@@ -114,14 +138,14 @@ def _render_pre_scan() -> None:
     )
 
     features = [
-        ("🔍", "Discover devices", "An nmap sweep finds hosts, open ports, and services on your LAN."),
-        ("🧠", "Match real CVEs", "RAG over an NVD knowledge base cites real CVEs for what it finds."),
-        ("📊", "Graded A–F report", "A deterministic rubric scores five risk dimensions."),
-        ("💬", "Grounded Q&A", "Ask follow-up questions; answers stay grounded in your scan."),
+        (_ICON_SEARCH, "Discover devices", "An nmap sweep finds hosts, open ports, and services on your LAN."),
+        (_ICON_DATABASE, "Match real CVEs", "RAG over an NVD knowledge base cites real CVEs for what it finds."),
+        (_ICON_CHART, "Graded A–F report", "A deterministic rubric scores five risk dimensions."),
+        (_ICON_CHAT, "Grounded Q&A", "Ask follow-up questions; answers stay grounded in your scan."),
     ]
     for col, (icon, title, body) in zip(st.columns(len(features)), features, strict=True):
         col.markdown(
-            f'<div class="feature-card"><div class="feature-icon">{icon}</div>'
+            f'<div class="feature-card"><div class="feature-icon">{_icon(icon)}</div>'
             f'<div class="feature-title">{title}</div>'
             f'<div class="feature-body">{body}</div></div>',
             unsafe_allow_html=True,
