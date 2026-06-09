@@ -38,11 +38,14 @@ Live scan 會實際掃描目前所在的區域網路。使用前請確認：
 
 ### 主畫面
 
-主畫面標題為 **Home Network Security Auditor**。尚未載入報告時，畫面會顯示：
+主畫面標題為 **Home Network Security Auditor**。尚未載入報告時，會顯示著陸頁：
 
-- Default port scan: Top 100
-- OS detection: Off（以 `sudo` 啟動時自動開啟）
-- Report mode: A-F grade
+- 一條歡迎/引導帶，提示用 **Start Scan** 或 **Load Demo Report** 開始；
+- 四張功能卡片：Discover devices、Match real CVEs、Graded A–F report、Grounded Q&A；
+- 「How a scan runs」一列說明性事實：
+  - **Port scan**：Top 100 ports
+  - **OS detection**：依當前權限顯示 `Off · sudo enables`（一般）或 `On · root`（以 `sudo` 啟動時）
+  - **Scope**：Local LAN（只掃你所在的本地網段）
 
 載入或完成掃描後，主畫面會改為安全報告與 Follow-up Q&A。
 
@@ -90,7 +93,7 @@ http://localhost:8501/?demo=vulnerable_router
 
 ### Security Report
 
-最上方是整體摘要：
+最上方是一個**色階化的等級徽章**（A 綠 → F 紅）與摘要標籤：
 
 - **Overall grade**：整體安全等級，範圍為 A / B / C / D / F。
 - **Devices**：掃描到的裝置數量。
@@ -155,7 +158,7 @@ Findings 會依嚴重度分成四個 tab：
 - Low
 - Info
 
-每個 finding card 會包含：
+每個 finding card 會以**嚴重度顏色**標示左側色條（high 紅／medium 琥珀／low 藍／info 灰），內容包含：
 
 - finding 標題
 - 嚴重度與風險維度

@@ -63,18 +63,34 @@ data/      Raw KB documents + persisted vector store
 
 ## Quick Start
 
+### 1. Set up the environment
+
 ```bash
 uv venv && uv pip install -r requirements.txt   # create .venv and install deps
 cp .env.example .env                            # fill in Azure OpenAI credentials
 .venv/bin/python scripts/build_kb.py            # build the RAG knowledge base
+```
 
-# end-to-end scan from the CLI (works today):
+### 2. Run a scan from the CLI
+
+```bash
 .venv/bin/python scripts/run_scan.py                          # scan + interactive Q&A
 .venv/bin/python scripts/run_scan.py --offline report.json    # demo from a cached report
+```
 
-streamlit run app.py             # full Streamlit UI (in progress)
+### 3. Launch the Streamlit UI
 
-# regression checks:
+Graded report + streaming Q&A.
+
+```bash
+streamlit run app.py                              # normal launch (no OS detection)
+sudo .venv/bin/python -m streamlit run app.py     # run as root → auto OS detection + ARP discovery (finds more devices)
+```
+
+### 4. Regression checks
+
+```bash
 .venv/bin/python scripts/golden_scan.py     # deterministic grading/report (no LLM, no network)
+.venv/bin/python scripts/prompt_probes.py   # synthesis grounding probes (needs Azure creds + KB)
 .venv/bin/python scripts/qa_regression.py   # grounded-answer checks (needs Azure creds + KB)
 ```
