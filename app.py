@@ -124,6 +124,29 @@ def _inject_styles() -> None:
         .finding-cve { font-size: 0.84rem; color: var(--brand); margin-top: 0.35rem; font-weight: 600; }
         .finding-rec { font-size: 0.88rem; margin-top: 0.3rem; color: #1f2937; }
         .finding-rec b { color: #111827; }
+
+        /* Landing page */
+        .welcome-band {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 1.2rem 1.4rem; border-radius: 14px; margin: 0.2rem 0 1.2rem;
+            border: 1px solid rgba(79, 70, 229, 0.18);
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(99, 102, 241, 0.04));
+        }
+        .welcome-icon { font-size: 2.4rem; line-height: 1; }
+        .welcome-text { font-size: 1rem; color: #374151; line-height: 1.5; }
+        .feature-card {
+            height: 100%; border: 1px solid rgba(49, 51, 63, 0.12); border-radius: 12px;
+            padding: 1rem; background: rgba(250, 250, 252, 0.7);
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .feature-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07); }
+        .feature-icon { font-size: 1.6rem; }
+        .feature-title { font-weight: 700; margin: 0.45rem 0 0.3rem; color: #111827; }
+        .feature-body { font-size: 0.85rem; color: #4b5563; line-height: 1.45; }
+        .defaults-label {
+            margin: 1.3rem 0 0.4rem; font-size: 0.8rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280;
+        }
         </style>
         """,
         unsafe_allow_html=True,

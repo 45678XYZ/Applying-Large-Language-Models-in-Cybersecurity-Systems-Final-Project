@@ -103,11 +103,35 @@ def _render_sidebar(create_agent: AgentFactory) -> None:
 
 
 def _render_pre_scan() -> None:
-    st.info("Start a scan or load the demo report to view results.")
+    st.markdown(
+        '<div class="welcome-band">'
+        '<div class="welcome-icon">🛡️</div>'
+        '<div class="welcome-text"><b>Pick a path to begin.</b> Click '
+        "<b>Start Scan</b> in the sidebar to audit your live network, or "
+        "<b>Load Demo Report</b> to explore a deterministic example.</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    features = [
+        ("🔍", "Discover devices", "An nmap sweep finds hosts, open ports, and services on your LAN."),
+        ("🧠", "Match real CVEs", "RAG over an NVD knowledge base cites real CVEs for what it finds."),
+        ("📊", "Graded A–F report", "A deterministic rubric scores five risk dimensions."),
+        ("💬", "Grounded Q&A", "Ask follow-up questions; answers stay grounded in your scan."),
+    ]
+    for col, (icon, title, body) in zip(st.columns(len(features)), features, strict=True):
+        col.markdown(
+            f'<div class="feature-card"><div class="feature-icon">{icon}</div>'
+            f'<div class="feature-title">{title}</div>'
+            f'<div class="feature-body">{body}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div class="defaults-label">Scan defaults</div>', unsafe_allow_html=True)
     cols = st.columns(3)
     cols[0].metric("Default port scan", "Top 100")
-    cols[1].metric("OS detection", "Off")
-    cols[2].metric("Report mode", "A-F grade")
+    cols[1].metric("OS detection", "Off · sudo enables")
+    cols[2].metric("Report mode", "A–F grade")
 
 
 def _run_live_scan(create_agent: AgentFactory) -> None:
