@@ -31,7 +31,7 @@ Phase 3 — Cross-cutting Glue                 DONE
 Phase 4 — Agent Executor & Report            DONE
   ├─ A: UI shell (3 tasks)                  ███    DONE
   └─ B: core / reporter / prompt-iter (3)   ███    DONE
-Phase 5 — End-to-end on a Real Network       live re-run grade C; UI cold-boot verified; screenshots pending
+Phase 5 — End-to-end on a Real Network       live UI captures done; grade B local LAN screenshot set
 Phase 6 — Testing, Polish, Demo              regression suites green (A+B); acceptance #1–#5 met
 ```
 
@@ -219,11 +219,11 @@ Both members, working together:
       network — full chain verified: nmap → KB retrieval → LLM synthesis →
       graded `ScanReport` → grounded Q&A (2026-06-04). `--offline` cache mode
       (the §6 fallback) also works.
-- [ ] Re-run through `streamlit run app.py` against the live network and capture screenshots.
-      Live pipeline re-run now lands at grade **C** (2 real-CVE highs) with Wi-Fi read
-      as WPA2; `app.py` cold-boot verified headless via Streamlit `AppTest` (no
-      exceptions, report renders) (2026-06-06). In-app screenshot capture is the
-      only open item.
+- [x] Re-run through `streamlit run app.py` against the live network and capture screenshots.
+      Latest UI captures use the `172.20.10.0/28` local LAN view: grade **B**,
+      2 devices, WPA3, FTP/RTSP service checks, and grounded Chinese follow-up
+      Q&A (2026-06-09). `app.py` cold-boot remains verified headless via
+      Streamlit `AppTest` (no exceptions, report renders).
 - [x] Capture failures — triage logged below.
 - [x] Fix the top 3 blockers from that triage.
 
@@ -262,7 +262,9 @@ now lands at **C** with Wi-Fi read as WPA2.
 - [x] Screenshots for the final report: Streamlit sidebar now supports a
       selectable `Demo scenario`, so the final report can be captured from
       the exact UI for `Clean network`, `Risky IoT`, and `Vulnerable router`.
-      Checklist and target paths are in `docs/demo-script.md`.
+      The updated `Risky IoT` screenshot set covers idle, running scan, report
+      summary, report details, and Chinese Q&A states. Checklist and target
+      paths are in `docs/demo-script.md`.
 
 **B: prompt regression & report quality**
 

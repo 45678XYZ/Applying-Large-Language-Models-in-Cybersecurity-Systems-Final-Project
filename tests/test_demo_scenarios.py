@@ -4,7 +4,7 @@ from scripts.demo_scenarios import build_demo_report, list_scenarios
 def test_phase6_demo_scenarios_have_expected_grades():
     expected = {
         "clean_network": "A",
-        "risky_iot": "C",
+        "risky_iot": "B",
         "vulnerable_router": "D",
     }
 

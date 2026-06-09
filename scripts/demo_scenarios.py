@@ -4,7 +4,7 @@ The live scanner is useful for the real demo, but final screenshots need stable
 inputs. These three hand-authored networks cover the presentation path:
 
     clean_network      -> grade A, no findings
-    risky_iot          -> grade C, IoT exposure without CVE claims
+    risky_iot          -> grade B, live-scan-style local LAN findings
     vulnerable_router  -> grade D, router CVE and unsafe admin services
 
 Usage:
@@ -18,6 +18,7 @@ import argparse
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -59,8 +60,8 @@ def list_scenarios() -> list[DemoScenario]:
         DemoScenario(
             "risky_iot",
             "Risky IoT",
-            "Camera and thermostat on the main subnet, grade C.",
-            "C",
+            "Live-scan-style local LAN with two devices, grade B.",
+            "B",
             _risky_iot_report,
         ),
         DemoScenario(
@@ -137,18 +138,18 @@ def _clean_network_report() -> ScanReport:
 
 def _risky_iot_report() -> ScanReport:
     network = NetworkInfo(
-        local_ip="192.168.20.44",
-        subnet_cidr="192.168.20.0/24",
-        gateway="192.168.20.1",
-        dns_servers=["192.168.20.1"],
-        interface="wlan0",
+        local_ip="172.20.10.2",
+        subnet_cidr="172.20.10.0/28",
+        gateway="172.20.10.1",
+        dns_servers=["172.20.10.1"],
+        interface="en0",
         is_wireless=True,
     )
-    wifi = WiFiInfo(ssid="FamilyNet", encryption="WPA2", band="2.4GHz", signal_dbm=-61)
+    wifi = WiFiInfo(ssid="<redacted>", encryption="WPA3", band="2.4GHz", signal_dbm=-31)
     router = RouterInfo(
-        gateway_ip="192.168.20.1",
-        model="ISP gateway",
-        firmware_version="2025.10",
+        gateway_ip="172.20.10.1",
+        model=None,
+        firmware_version=None,
         admin_panel_exposed=False,
         upnp_enabled=False,
         telnet_open=False,
@@ -156,84 +157,157 @@ def _risky_iot_report() -> ScanReport:
     )
     devices = [
         Device(
-            ip="192.168.20.1",
-            hostname="router.local",
-            vendor="ISP",
+            ip="172.20.10.1",
+            hostname=None,
+            vendor=None,
+            os_guess="Apple iOS 15.0 - 16.1 (Darwin 21.1.0 - 22.1.0) (100% accuracy)",
             is_gateway=True,
-            ports=[Port(number=53, service="domain"), Port(number=443, service="https")],
+            ports=[
+                Port(number=21, service="ftp"),
+                Port(number=53, service="domain"),
+                Port(number=49152, service="tcpwrapped"),
+            ],
         ),
         Device(
-            ip="192.168.20.23",
-            hostname="frontdoor-cam.local",
-            vendor="Hikvision",
-            device_type="camera",
-            ports=[Port(number=554, service="rtsp", product="Hikvision RTSP")],
-        ),
-        Device(
-            ip="192.168.20.24",
-            hostname="thermostat.local",
-            vendor="Generic IoT",
-            device_type="thermostat",
-            ports=[Port(number=80, service="http", product="embedded httpd")],
-        ),
-        Device(
-            ip="192.168.20.42",
-            hostname="laptop.local",
-            vendor="Lenovo",
-            os_guess="Windows",
-            ports=[],
+            ip="172.20.10.2",
+            hostname=None,
+            vendor=None,
+            os_guess="Apple macOS 12 (Monterey) (Darwin 21.1.0 - 21.6.0) (100% accuracy)",
+            ports=[Port(number=5000, service="rtsp")],
         ),
     ]
-    # NOTE: these four mediums put the grade at the `medium >= 4 -> C` threshold
-    # (see reporter.grade_from_findings). Keep at least four medium findings, or
-    # the grade silently drops to B and `build_demo_report`'s assertion fires.
     findings = [
         RiskFinding(
             dimension="wifi_encryption",
-            severity="medium",
-            title="Wi-Fi uses WPA2 rather than WPA3",
-            description=(
-                "FamilyNet negotiates WPA2. It is acceptable for compatibility, "
-                "but weaker than WPA3 against offline password cracking."
-            ),
-            affected='SSID "FamilyNet"',
-            recommendation="Enable WPA3 or WPA2/WPA3 mixed mode if all devices support it.",
+            severity="info",
+            title="Wi-Fi uses WPA3",
+            description="The active wireless network uses WPA3 with a strong signal.",
+            affected='SSID "<redacted>"',
+            recommendation="Keep WPA3 enabled and continue using a strong passphrase.",
         ),
         RiskFinding(
             dimension="iot_exposure",
             severity="medium",
-            title="IP camera exposes RTSP on the main LAN",
+            title="RTSP service is reachable on the local host",
             description=(
-                "frontdoor-cam.local exposes RTSP on 554/tcp, a common target for "
-                "default-password checks and stream scraping."
+                "172.20.10.2 exposes RTSP on 5000/tcp. Media services should be "
+                "limited to trusted clients and kept off shared networks when possible."
             ),
-            affected="192.168.20.23 port 554/tcp",
-            recommendation="Move cameras to an IoT VLAN or guest SSID and rotate their passwords.",
-        ),
-        RiskFinding(
-            dimension="iot_exposure",
-            severity="medium",
-            title="Thermostat serves an unencrypted HTTP admin page",
-            description=(
-                "thermostat.local exposes HTTP on 80/tcp, so admin traffic can be "
-                "observed by any host on the same LAN segment."
-            ),
-            affected="192.168.20.24 port 80/tcp",
-            recommendation="Disable the local admin page or restrict it to a management VLAN.",
+            affected="172.20.10.2 port 5000/tcp",
+            recommendation="Restrict RTSP to trusted devices or disable it when it is not needed.",
         ),
         RiskFinding(
             dimension="network_isolation",
-            severity="medium",
-            title="Personal devices and IoT devices share one subnet",
+            severity="info",
+            title="Small local subnet was scanned",
             description=(
-                "The camera, thermostat, and laptop all sit on 192.168.20.0/24, "
-                "so one compromised IoT device can directly reach the laptop."
+                "The scan covered 172.20.10.0/28 and found only the gateway and local host."
             ),
-            affected="192.168.20.0/24",
-            recommendation="Create a guest or IoT SSID that cannot initiate connections to laptops.",
+            affected="172.20.10.0/28",
+            recommendation="Keep untrusted IoT devices on a guest or IoT SSID when they are added.",
+        ),
+        RiskFinding(
+            dimension="remote_attack_surface",
+            severity="medium",
+            title="Gateway exposes FTP",
+            description=(
+                "172.20.10.1 has FTP open on 21/tcp, which can expose credentials "
+                "or files if enabled unintentionally."
+            ),
+            affected="172.20.10.1 port 21/tcp",
+            recommendation="Disable FTP on the gateway unless it is required for a known management workflow.",
+        ),
+        RiskFinding(
+            dimension="remote_attack_surface",
+            severity="info",
+            title="Gateway provides DNS locally",
+            description="172.20.10.1 answers DNS on 53/tcp for the local network.",
+            affected="172.20.10.1 port 53/tcp",
+            recommendation="Leave DNS reachable only from the LAN and avoid exposing it to the internet.",
+        ),
+        RiskFinding(
+            dimension="remote_attack_surface",
+            severity="info",
+            title="Gateway has a tcpwrapped high port",
+            description=(
+                "172.20.10.1 exposes 49152/tcp as tcpwrapped, which indicates "
+                "access control is present but the service should be identified."
+            ),
+            affected="172.20.10.1 port 49152/tcp",
+            recommendation=(
+                "Confirm which gateway service owns 49152/tcp and disable it if it is unnecessary."
+            ),
         ),
     ]
-    return assemble_report(network, wifi, router, devices, findings)
+    report = assemble_report(network, wifi, router, devices, findings)
+    report.generated_at = datetime(2026, 6, 9, 15, 59)
+    report.summary_markdown = _risky_iot_summary_markdown()
+    return report
+
+
+def _risky_iot_summary_markdown() -> str:
+    return """# Home Network Security Audit Report
+
+**Generated:** 2026-06-09 15:59
+**Overall grade:** B - Good
+**Devices discovered:** 2 | High: 0 | Medium: 2 | Low: 0 | Info: 4
+
+## Network Summary
+
+- **Local host:** 172.20.10.2 (172.20.10.0/28) on en0 (wireless)
+- **Gateway:** 172.20.10.1
+- **DNS:** 172.20.10.1
+- **Wi-Fi:** SSID "<redacted>" | WPA3 | 2.4GHz | -31 dBm
+- **Router:** unknown model (at 172.20.10.1)
+
+## Devices
+
+- **172.20.10.1** [gateway] [Apple iOS 15.0 - 16.1 (Darwin 21.1.0 - 22.1.0) (100% accuracy)] | 3 open: 21/tcp ftp, 53/tcp domain, 49152/tcp tcpwrapped
+- **172.20.10.2** [Apple macOS 12 (Monterey) (Darwin 21.1.0 - 21.6.0) (100% accuracy)] | 1 open: 5000/tcp rtsp
+
+## Findings
+
+### Medium
+
+1. **RTSP service is reachable on the local host** - 172.20.10.2 port 5000/tcp
+   172.20.10.2 exposes RTSP on 5000/tcp. Media services should be limited to trusted clients and kept off shared networks when possible.
+   *Recommendation:* Restrict RTSP to trusted devices or disable it when it is not needed.
+
+2. **Gateway exposes FTP** - 172.20.10.1 port 21/tcp
+   172.20.10.1 has FTP open on 21/tcp, which can expose credentials or files if enabled unintentionally.
+   *Recommendation:* Disable FTP on the gateway unless it is required for a known management workflow.
+
+### Info
+
+1. **Wi-Fi uses WPA3** - SSID "<redacted>"
+   The active wireless network uses WPA3 with a strong signal.
+   *Recommendation:* Keep WPA3 enabled and continue using a strong passphrase.
+
+2. **Small local subnet was scanned** - 172.20.10.0/28
+   The scan covered 172.20.10.0/28 and found only the gateway and local host.
+   *Recommendation:* Keep untrusted IoT devices on a guest or IoT SSID when they are added.
+
+3. **Gateway provides DNS locally** - 172.20.10.1 port 53/tcp
+   172.20.10.1 answers DNS on 53/tcp for the local network.
+   *Recommendation:* Leave DNS reachable only from the LAN and avoid exposing it to the internet.
+
+4. **Gateway has a tcpwrapped high port** - 172.20.10.1 port 49152/tcp
+   172.20.10.1 exposes 49152/tcp as tcpwrapped, which indicates access control is present but the service should be identified.
+   *Recommendation:* Confirm which gateway service owns 49152/tcp and disable it if it is unnecessary.
+
+## Risk Dimensions
+
+- **Router vulnerability:** no issues found
+- **Wi-Fi encryption:** Info (1 finding)
+- **IoT exposure:** Medium (1 finding)
+- **Network isolation:** Info (1 finding)
+- **Remote attack surface:** Medium (3 findings)
+
+## Prioritised Remediation
+
+1. Restrict RTSP to trusted devices or disable it when it is not needed.
+2. Disable FTP on the gateway unless it is required for a known management workflow.
+3. Confirm which gateway service owns 49152/tcp and disable it if it is unnecessary."""
 
 
 def _vulnerable_router_report() -> ScanReport:
