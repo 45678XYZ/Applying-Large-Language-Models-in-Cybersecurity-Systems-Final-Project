@@ -57,7 +57,9 @@ data/      Raw KB documents + persisted vector store
 - **Azure OpenAI** credentials (a chat deployment + `text-embedding-3-small`) in `.env`.
 
 > OS detection (`nmap -O`) needs `sudo`; it is **off by default**, so a normal
-> scan runs without elevated privileges.
+> scan runs without elevated privileges. Launch with `sudo` (e.g.
+> `sudo .venv/bin/python -m streamlit run app.py`) and the agent auto-enables
+> `-O` — root also lets nmap use ARP host discovery, so it finds more devices.
 
 ## Quick Start
 

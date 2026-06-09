@@ -41,7 +41,7 @@ Live scan 會實際掃描目前所在的區域網路。使用前請確認：
 主畫面標題為 **Home Network Security Auditor**。尚未載入報告時，畫面會顯示：
 
 - Default port scan: Top 100
-- OS detection: Off
+- OS detection: Off（以 `sudo` 啟動時自動開啟）
 - Report mode: A-F grade
 
 載入或完成掃描後，主畫面會改為安全報告與 Follow-up Q&A。
@@ -49,12 +49,12 @@ Live scan 會實際掃描目前所在的區域網路。使用前請確認：
 ## 4. 執行 Live Scan
 
 1. 在左側 Sidebar 點擊 **Start Scan**。
-2. UI 會顯示 **Running scan** 狀態區塊。
+2. UI 會顯示 **Running scan** 狀態區塊；掃描期間 **Start Scan**／**Load Demo Report**／**Reset** 會暫時停用（Start Scan 變為 **Scanning…**），避免重複觸發。
 3. 掃描期間會逐步串流目前進度，例如網路資訊、Wi-Fi、裝置掃描、路由器檢查、CVE 查詢與報告生成。
 4. 完成後，畫面會自動顯示 `ScanReport`。
 5. 若掃描失敗，UI 會顯示錯誤訊息；可依錯誤內容檢查依賴、權限、`.env` 或網路狀態。
 
-Live scan 預設偏向 demo-friendly 設定：掃描 top 100 ports，且 OS detection 預設關閉，以避免需要 sudo 或管理員權限。
+Live scan 預設偏向 demo-friendly 設定：掃描 top 100 ports，且 OS detection 預設關閉，以避免需要 sudo 或管理員權限。若以 `sudo` 啟動（例如 `sudo .venv/bin/python -m streamlit run app.py`），agent 會自動開啟 OS detection，且 nmap 可改用 ARP 探索而掃到更多裝置。
 
 ## 5. 載入 Demo Report
 
@@ -182,7 +182,7 @@ Findings 會依嚴重度分成四個 tab：
 - `我的 Wi-Fi 加密夠安全嗎？`
 - `報告中提到的 CVE 是哪一個？`
 
-回答會根據目前載入的 `ScanReport` 與知識庫內容產生。若 demo report 載入時無法建立 LLM agent，Q&A 輸入框會顯示 **Q&A unavailable**，但報告本身仍可正常瀏覽。
+回答會根據目前載入的 `ScanReport` 與知識庫內容產生，並以**串流方式逐字顯示**（像打字一樣即時出現）。若 demo report 載入時無法建立 LLM agent，Q&A 輸入框會顯示 **Q&A unavailable**，但報告本身仍可正常瀏覽。
 
 ## 8. Reset
 
