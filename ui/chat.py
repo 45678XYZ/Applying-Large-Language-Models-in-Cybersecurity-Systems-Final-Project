@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Iterable, Iterator
 
 import streamlit as st
@@ -151,11 +152,12 @@ def _render_pre_scan() -> None:
             unsafe_allow_html=True,
         )
 
-    st.markdown('<div class="defaults-label">Scan defaults</div>', unsafe_allow_html=True)
+    st.markdown('<div class="defaults-label">How a scan runs</div>', unsafe_allow_html=True)
+    os_detection = hasattr(os, "geteuid") and os.geteuid() == 0
     cols = st.columns(3)
-    cols[0].metric("Default port scan", "Top 100")
-    cols[1].metric("OS detection", "Off · sudo enables")
-    cols[2].metric("Report mode", "A–F grade")
+    cols[0].metric("Port scan", "Top 100 ports")
+    cols[1].metric("OS detection", "On · root" if os_detection else "Off · sudo enables")
+    cols[2].metric("Scope", "Local LAN")
 
 
 def _run_live_scan(create_agent: AgentFactory) -> None:
