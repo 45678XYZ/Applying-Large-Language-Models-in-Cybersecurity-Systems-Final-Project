@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 from collections import Counter
 
 import streamlit as st
@@ -40,16 +41,24 @@ def render_report(report: ScanReport) -> None:
 def _render_header(report: ScanReport) -> None:
     counts = _severity_counts(report.findings)
     generated = report.generated_at.strftime("%Y-%m-%d %H:%M")
+    grade = report.overall_grade
+
+    chips = [f'<span class="chip">{len(report.devices)} devices</span>']
+    if counts["high"]:
+        chips.append(f'<span class="chip chip-high">{counts["high"]} High</span>')
+    if counts["medium"]:
+        chips.append(f'<span class="chip chip-medium">{counts["medium"]} Medium</span>')
+    chips.append(f'<span class="chip">Generated {generated}</span>')
 
     st.subheader("Security Report")
-    grade_col, device_col, high_col, medium_col, generated_col = st.columns(
-        [1, 1, 1, 1, 1.4]
+    st.markdown(
+        f'<div class="grade-hero grade-{grade}">'
+        f'<div class="grade-badge">{grade}</div>'
+        f'<div><div class="grade-label">{GRADE_LABELS[grade]}</div>'
+        f'<div class="grade-chips">{"".join(chips)}</div></div>'
+        f"</div>",
+        unsafe_allow_html=True,
     )
-    grade_col.metric("Overall grade", report.overall_grade, GRADE_LABELS[report.overall_grade])
-    device_col.metric("Devices", len(report.devices))
-    high_col.metric("High", counts["high"])
-    medium_col.metric("Medium", counts["medium"])
-    generated_col.metric("Generated", generated)
 
 
 def _render_network_summary(report: ScanReport) -> None:
@@ -152,22 +161,37 @@ def _render_findings(findings: list[RiskFinding]) -> None:
 
 
 def _render_finding(finding: RiskFinding) -> None:
-    with st.container(border=True):
-        st.markdown(f"**{finding.title}**")
-        st.caption(
-            f"{SEVERITY_LABELS[finding.severity]} | "
-            f"{DIMENSION_LABEL.get(finding.dimension, finding.dimension)}"
-            + (f" | {finding.affected}" if finding.affected else "")
+    sev = finding.severity
+    dimension = DIMENSION_LABEL.get(finding.dimension, finding.dimension)
+    meta = dimension + (f" · {_esc(finding.affected)}" if finding.affected else "")
+
+    cve_html = ""
+    if finding.related_cves:
+        cves = ", ".join(
+            _esc(cve.cve_id)
+            + (f" (CVSS {cve.cvss_score})" if cve.cvss_score is not None else "")
+            for cve in finding.related_cves
         )
-        st.write(finding.description)
-        if finding.related_cves:
-            cves = ", ".join(
-                f"{cve.cve_id}"
-                + (f" (CVSS {cve.cvss_score})" if cve.cvss_score is not None else "")
-                for cve in finding.related_cves
-            )
-            st.write(f"Related CVEs: {cves}")
-        st.write(f"Recommended action: {finding.recommendation}")
+        cve_html = f'<div class="finding-cve">Related CVEs: {cves}</div>'
+
+    st.markdown(
+        f'<div class="finding-card sev-{sev}">'
+        f'<div class="finding-head">'
+        f'<span class="sev-pill sev-{sev}">{SEVERITY_LABELS[sev]}</span>'
+        f'<span class="finding-dim">{meta}</span></div>'
+        f'<div class="finding-title">{_esc(finding.title)}</div>'
+        f'<div class="finding-desc">{_esc(finding.description)}</div>'
+        f"{cve_html}"
+        f'<div class="finding-rec"><b>Recommended action:</b> '
+        f"{_esc(finding.recommendation)}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _esc(text: str) -> str:
+    """HTML-escape dynamic (LLM/scan) text, keeping intentional line breaks."""
+    return html.escape(text).replace("\n", "<br>")
 
 
 def _severity_counts(findings: list[RiskFinding]) -> Counter[str]:
