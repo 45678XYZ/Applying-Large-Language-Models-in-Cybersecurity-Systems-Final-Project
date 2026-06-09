@@ -11,7 +11,10 @@ the prompt promises:
                               and no *other* id is invented
     3. mismatched CVE       → a CVE offered only for the router is not pinned
                               onto an unrelated laptop
-    4. missing data         → gaps are left empty, not back-filled with a
+    4. unconfirmed version  → a family-only / version-unknown CVE is surfaced
+                              but downgraded (never high) and flagged as needing
+                              firmware confirmation, not asserted as exploitable
+    5. missing data         → gaps are left empty, not back-filled with a
                               fabricated CVE / firmware
 
 This is the measuring stick for "prompt convergence": tighten `config/prompts.py`,
@@ -158,6 +161,43 @@ def _probe_mismatched_cve():
     return "mismatched CVE → not forced onto an unrelated host", (network, None, router, [laptop], cves, []), check
 
 
+def _probe_unconfirmed_version_cve():
+    network, _wifi, _router, _devices = golden_network()
+    # The product family matches but the running version is unknown (nmap got no
+    # -sV version), so a high-CVSS CVE must be hedged: surfaced, but not high and
+    # flagged as needing version confirmation — never asserted as exploitable.
+    camera = Device(
+        ip="192.168.0.55",
+        hostname="cam.local",
+        vendor="Hikvision",
+        device_type="camera",
+        ports=[Port(number=554, service="rtsp", product="Hikvision RTSP")],  # no version
+    )
+    family = CVE(
+        cve_id="CVE-2021-36260",
+        cvss_score=9.8,
+        description="Hikvision web server in some firmware versions allows command injection.",
+    )
+    cves = {"192.168.0.55 · Hikvision RTSP": [family]}
+
+    def check(findings):
+        backed = [f for f in findings if any(c.cve_id.upper() == "CVE-2021-36260" for c in f.related_cves)]
+        not_high = all(f.severity != "high" for f in backed)
+        hedged = bool(backed) and re.search(
+            r"version|firmware|confirm|unconfirm|cannot|could not|possible|potential|may\b",
+            _all_text(backed),
+            re.I,
+        )
+        return [
+            _expect(bool(backed), "family CVE still surfaced (downgraded, not dropped)"),
+            _expect(not_high, "unconfirmed-version CVE is NOT marked high", str([f.severity for f in backed])),
+            _expect(bool(hedged), "finding flags the version as needing confirmation"),
+            _expect(_mentioned_ids(findings) <= {"CVE-2021-36260"}, "no extra CVE invented", str(sorted(_mentioned_ids(findings)))),
+        ]
+
+    return "unconfirmed version → CVE hedged, not high", (network, None, None, [camera], cves, []), check
+
+
 def _probe_missing_data():
     network, _wifi, _router, _devices = golden_network()
     # Wi-Fi undetected, router not probed, one device, no CVE context.
@@ -175,7 +215,13 @@ def _probe_missing_data():
     return "missing data → gaps left empty, not back-filled", (network, None, None, [device], {}, []), check
 
 
-PROBES = [_probe_empty_cve_context, _probe_relevant_cve, _probe_mismatched_cve, _probe_missing_data]
+PROBES = [
+    _probe_empty_cve_context,
+    _probe_relevant_cve,
+    _probe_mismatched_cve,
+    _probe_unconfirmed_version_cve,
+    _probe_missing_data,
+]
 
 
 def main() -> int:

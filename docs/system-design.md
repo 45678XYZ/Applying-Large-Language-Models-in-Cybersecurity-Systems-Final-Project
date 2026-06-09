@@ -234,7 +234,7 @@ Both members, working together:
 | 1 | Grade **F** is over-aggressive: `port_risk` marks every open gateway port (DNS/HTTP/HTTPS/UPnP) as `high` → 5 highs → F. A router serving http/https admin + DNS is normal. | A·B | **Done — live-confirmed F→C (2026-06-06).** A added LAN gateway baselines, but two gaps kept the live grade at F: the gateway device was never flagged `is_gateway`, so those baselines never applied (`abbddd6`), and a substring match (`rce` inside `source`/`resource`) re-escalated every port to high (`7d2cb86`). Both fixed + raw-KB dump removed from descriptions (`c2a8233`) → live re-run is now **C** with only the 2 real-CVE highs. |
 | 2 | No CVE cited (misses acceptance #4): no sudo → no MAC → no vendor → `lookup_cve` had no product to query. | B | ✅ **Done & live-confirmed (2026-06-04).** `_gather_cves` now also queries each open port's `product`+`version` from `-sV` (`f026c41`). Re-run cited 10 real KB CVEs across 2 high findings (e.g. CVE-2024-54807 9.8, CVE-2018-5371 8.8) → acceptance #4 met. |
 | 3 | Wi-Fi not detected on macOS (`airport` removed / needs Location permission) → only an info finding. | A·B | **Done — live-confirmed (2026-06-06).** `airport` is gone on macOS 14.4+ and `wdutil`/`networksetup` return a redacted SSID without Location Services, so detection still failed live. Switched to `system_profiler SPAirPortDataType -json` (`fceae45`): it reports Security/Channel/Signal even when only the SSID is redacted → live scan now reads **WPA2 / 5GHz**. Locale-safe (JSON keys) + unit-tested (`7c8708b`). |
-| 4 | Router model/firmware not extracted from a generic BusyBox banner → no router CVE check. | A/B | Known limit (§7.2); low priority. |
+| 4 | Router model/firmware not extracted from a generic BusyBox banner → exact-version CVE match not possible. | A/B | Known limit; low priority. **Mitigated (2026-06-09):** when the version can't be confirmed, a family-level CVE is surfaced as a hedged finding (capped below high, "verify firmware"), not a confident high — see §7. |
 
 **A-side update (2026-06-05):** `port_risk` now uses LAN-specific baselines
 for gateway DNS/HTTP/HTTPS/UPnP and no longer escalates every generic
@@ -277,17 +277,20 @@ now lands at **C** with Wi-Fi read as WPA2.
       against the golden network **or** any saved scan (`--report`). 8/8 pass.
 - [x] Trim hallucinations — `scripts/prompt_probes.py` stress-tests the
       synthesis prompts with crafted CVE contexts (empty / relevant /
-      mismatched / missing). Grounding already held **10/10**, so the change
-      was limited to anchoring borderline severities in `config/prompts.py`
-      (admin-panel-on-LAN, missing data) for a stable grade — confirmed by
-      re-running the probe (no more low/info drift).
+      mismatched / unconfirmed-version / missing). Grounding already held, so the
+      first pass only anchored borderline severities in `config/prompts.py`
+      (admin-panel-on-LAN, missing data) for a stable grade. A later probe
+      (2026-06-09) added **version confidence**: a CVE that matches only the
+      product family / unknown version is now capped below high and flagged
+      "verify firmware", not asserted as exploitable. **14/14 invariants hold.**
 
 > Both share `scripts/golden_fixtures.py` — one hand-authored home LAN whose
 > graded output is deterministic (unlike a live nmap scan), which is what makes
 > it usable as a regression baseline.
 >
-> 📄 Captured run transcripts (25/25 · 10/10 · 8/8) and the convergence
-> before/after are recorded in [`docs/phase6-regression.md`](phase6-regression.md).
+> 📄 Captured run transcripts (golden 25/25 · probes 14/14 · Q&A 8/8) and the
+> convergence before/after are recorded in
+> [`docs/phase6-regression.md`](phase6-regression.md).
 
 ---
 
@@ -312,7 +315,7 @@ highs in a five-dimension graded report); #5 covered by `qa_regression.py`
 
 | Risk                                                    | Mitigation                                                                              |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Nmap `-O` needs sudo on macOS                           | Document `sudo` invocation; gate OS detection behind a flag and fall back gracefully    |
+| Nmap `-O` needs sudo on macOS                           | OS detection auto-gated on `os.geteuid()==0` (off without sudo, on under root); `_safe` degrades the scan if `-O` ever fails |
 | NVD API rate limit (5 req / 30s without key)            | Use `NVD_API_KEY`; cache raw JSON under `data/knowledge_base/raw/nvd/`                  |
 | Azure OpenAI quota or latency spikes during demo        | Pre-warm embedding cache; allow `--offline` mode that loads a cached `ScanReport`       |
 | Router probe misidentifies vendor                       | Combine HTTP `Server` header + HTML title + OUI; fall back to "unknown" instead of guessing |
@@ -337,7 +340,19 @@ highs in a five-dimension graded report); #5 covered by `qa_regression.py`
   anti-hallucination, and five-dimension/severity rules stay.
 - **Scan duration in UI — STREAM PROGRESS + FAST DEFAULTS** (pending A sign-off).
   `core.py` exposes a callback hook so `ui/` can render tool-call progress
-  step-by-step (`st.status`). Defaults: top-100 ports, OS detection off (avoids
-  sudo), optionally narrow the host range; keep the `--offline` cached
-  `ScanReport` as a demo fallback. **SYNC point:** agree the `core.py` callback
-  interface with A before the UI wires to it.
+  step-by-step (`st.status`). Defaults: top-100 ports, OS detection off unless
+  the app is run as root — `core.py` auto-enables `nmap -O` when
+  `os.geteuid()==0` (root also unlocks ARP host discovery, which finds more
+  hosts), so a normal run stays sudo-free; optionally narrow the host range;
+  keep the `--offline` cached `ScanReport` as a demo fallback. **SYNC point:**
+  agree the `core.py` callback interface with A before the UI wires to it.
+- **CVE severity needs version confidence — CAP FAMILY-ONLY MATCHES (2026-06-09).**
+  `lookup_cve` matches by product/service name (semantic), not CPE version range,
+  so a retrieved CVE can belong to the same family without affecting the exact
+  firmware here. The synthesis prompt now marks a CVE-backed finding **high only
+  when the scanned version is confirmed in the CVE's affected range**; a
+  family-only / unknown-version match is capped at medium (low if CVSS < 7.0) and
+  worded "possible — verify firmware version". Locked in by
+  `prompt_probes._probe_unconfirmed_version_cve`. Trade-off: fewer false-high CVE
+  findings on live home scans, at the cost of not asserting exploitability we
+  cannot confirm — chosen for honesty over alarm.

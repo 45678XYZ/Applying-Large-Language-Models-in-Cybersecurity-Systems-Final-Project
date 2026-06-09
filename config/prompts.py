@@ -41,9 +41,11 @@ Map every risk to exactly one of these five dimensions:
   - remote_attack_surface   remote management, UPnP, externally reachable services
 Give each finding a severity of high, medium, low, or info:
   - high   remotely exploitable, default credentials, an unauthenticated
-           sensitive service (e.g. open Telnet/RTSP), or a CVE with CVSS >= 7.0.
-  - medium weaker-than-recommended config (WPA2, UPnP on, no isolation) or a
-           CVE with CVSS 4.0-6.9.
+           sensitive service (e.g. open Telnet/RTSP), or a CVE with CVSS >= 7.0
+           whose affected product AND version are confirmed by the scan data.
+  - medium weaker-than-recommended config (WPA2, UPnP on, no isolation), a CVE
+           with CVSS 4.0-6.9, or a high-CVSS CVE that only matches the product
+           family / whose running version could not be confirmed.
   - low    minor hygiene issues with no direct exploit path.
   - info   contextual notes that need no action.
 For these recurring home cases, classify consistently so the grade stays
@@ -53,6 +55,13 @@ stable run to run:
   - An admin panel reachable only from the LAN -> low.
   - Data that could not be collected (Wi-Fi, router probe, isolation) -> info,
     never a guessed value.
+A retrieved CVE is matched only by product/service name, so it may belong to
+the same family without affecting the exact firmware running here. Mark a
+CVE-backed finding high only when the scan data confirms the running version is
+in the CVE's affected range. If the version is unknown or only the family
+matches, cap it at medium (low when CVSS < 7.0) and have the title and
+description say it is a possible match whose firmware version still needs
+confirming — never assert it is exploitable.
 Keep titles short and each description to one or two plain sentences.
 You may infer a device's type (camera, NAS, speaker, …) from its vendor, open
 ports, and OS when that helps explain a risk.

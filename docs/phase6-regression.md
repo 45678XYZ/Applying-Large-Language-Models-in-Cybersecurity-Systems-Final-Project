@@ -24,7 +24,7 @@ the report without re-running anything.
 | Script | Mechanism | Asserts | LLM? |
 | ------ | --------- | ------- | ---- |
 | `golden_scan.py` | Runs the fixed `golden_fixtures` network through `reporter.assemble_report`, plus a rubric table. | Grade **C** reproduced, 2H/3M/1L, findings sorted, CVE rendered, all 5 dimensions, dedup remediation, **every A–F branch**. | No |
-| `prompt_probes.py` | Feeds `SecurityAgent._synthesize_findings` crafted CVE contexts (empty / relevant / mismatched / missing). | No invented CVE, provided CVE cited & attributed to the right host, mismatched CVE not mis-pinned, gaps left empty. | Yes |
+| `prompt_probes.py` | Feeds `SecurityAgent._synthesize_findings` crafted CVE contexts (empty / relevant / mismatched / unconfirmed-version / missing). | No invented CVE, provided CVE cited & attributed to the right host, mismatched CVE not mis-pinned, family-only/unknown-version CVE hedged (not high), gaps left empty. | Yes |
 | `qa_regression.py` | Runs a fixed question bank through `SecurityAgent.ask`; grade/CVE anchors read live from the report. | Each answer cites real report facts (`any_of`) and fabricates none (`none_of`); runs against the golden report or any saved scan. | Yes |
 
 ---
@@ -68,6 +68,10 @@ RESULT: PASS — golden scan reproduced exactly
 ```
 
 ### 2. `prompt_probes.py --verbose` — 10/10
+
+> This is the pinned 2026-06-05 capture (4 probes / 10 invariants). A 5th probe
+> and the version-confidence prompt change landed 2026-06-09 — see
+> *"Update 2026-06-09"* below; the current suite reports **14/14**.
 
 ```text
 • empty CVE context → no invented CVE
@@ -164,6 +168,23 @@ The anchor block added to `AGENT_SYSTEM_PROMPT`:
 > medium, no guest/IoT isolation → medium, **admin panel reachable only from
 > the LAN → low**, data that could not be collected → info (never a guessed
 > value).
+
+### Update 2026-06-09 — CVE version confidence (probes 4→5, 10→14 invariants)
+
+A new probe (`_probe_unconfirmed_version_cve`) feeds a high-CVSS CVE (Hikvision
+`CVE-2021-36260`, CVSS 9.8) for a device whose **running version is unknown**.
+Before, `AGENT_SYSTEM_PROMPT`'s "CVSS ≥ 7.0 → high" rule plus the synthesis
+prompt's "whenever a CVE is listed, raise it" forced a confident **high** for any
+same-family match. The prompts now gate severity on version confidence:
+
+```text
+BEFORE: [high/iot_exposure]   Hikvision camera vulnerable to CVE-2021-36260
+AFTER:  [medium/iot_exposure] Possible Hikvision firmware vulnerability (CVE-2021-36260) — verify firmware version
+```
+
+Confirmed matches still stay high (the BusyBox httpd **1.19.4** probe continues
+to report `[high] … CVE-2018-5371`). Full suite at this HEAD:
+**golden 25/25 · probes 14/14 · Q&A 8/8**.
 
 ## Notes (honesty)
 
