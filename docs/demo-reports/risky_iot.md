@@ -1,55 +1,62 @@
 # Home Network Security Audit Report
 
-**Generated:** 2026-06-05 11:20  
-**Overall grade:** C — Needs improvement  
-**Devices discovered:** 4 | High: 0 · Medium: 4 · Low: 0
+**Generated:** 2026-06-09 15:59
+**Overall grade:** B - Good
+**Devices discovered:** 2 | High: 0 | Medium: 2 | Low: 0 | Info: 4
 
 ## Network Summary
 
-- **Local host:** 192.168.20.44 (192.168.20.0/24) on wlan0 (wireless)
-- **Gateway:** 192.168.20.1
-- **DNS:** 192.168.20.1
-- **Wi-Fi:** SSID "FamilyNet" · WPA2 · 2.4GHz
-- **Router:** ISP gateway · firmware 2025.10 (at 192.168.20.1)
+- **Local host:** 172.20.10.2 (172.20.10.0/28) on en0 (wireless)
+- **Gateway:** 172.20.10.1
+- **DNS:** 172.20.10.1
+- **Wi-Fi:** SSID "<redacted>" | WPA3 | 2.4GHz | -31 dBm
+- **Router:** unknown model (at 172.20.10.1)
 
 ## Devices
 
-- **192.168.20.1** — router.local [gateway] · 2 open: 53/tcp domain, 443/tcp https
-- **192.168.20.23** — frontdoor-cam.local · 1 open: 554/tcp rtsp
-- **192.168.20.24** — thermostat.local · 1 open: 80/tcp http
-- **192.168.20.42** — laptop.local [Windows] · no open ports
+- **172.20.10.1** [gateway] [Apple iOS 15.0 - 16.1 (Darwin 21.1.0 - 22.1.0) (100% accuracy)] | 3 open: 21/tcp ftp, 53/tcp domain, 49152/tcp tcpwrapped
+- **172.20.10.2** [Apple macOS 12 (Monterey) (Darwin 21.1.0 - 21.6.0) (100% accuracy)] | 1 open: 5000/tcp rtsp
 
 ## Findings
 
-### 🟡 Medium
+### Medium
 
-1. **Wi-Fi uses WPA2 rather than WPA3** — SSID "FamilyNet"
-   FamilyNet negotiates WPA2. It is acceptable for compatibility, but weaker than WPA3 against offline password cracking.
-   *Recommendation:* Enable WPA3 or WPA2/WPA3 mixed mode if all devices support it.
+1. **RTSP service is reachable on the local host** - 172.20.10.2 port 5000/tcp
+   172.20.10.2 exposes RTSP on 5000/tcp. Media services should be limited to trusted clients and kept off shared networks when possible.
+   *Recommendation:* Restrict RTSP to trusted devices or disable it when it is not needed.
 
-2. **IP camera exposes RTSP on the main LAN** — 192.168.20.23 port 554/tcp
-   frontdoor-cam.local exposes RTSP on 554/tcp, a common target for default-password checks and stream scraping.
-   *Recommendation:* Move cameras to an IoT VLAN or guest SSID and rotate their passwords.
+2. **Gateway exposes FTP** - 172.20.10.1 port 21/tcp
+   172.20.10.1 has FTP open on 21/tcp, which can expose credentials or files if enabled unintentionally.
+   *Recommendation:* Disable FTP on the gateway unless it is required for a known management workflow.
 
-3. **Thermostat serves an unencrypted HTTP admin page** — 192.168.20.24 port 80/tcp
-   thermostat.local exposes HTTP on 80/tcp, so admin traffic can be observed by any host on the same LAN segment.
-   *Recommendation:* Disable the local admin page or restrict it to a management VLAN.
+### Info
 
-4. **Personal devices and IoT devices share one subnet** — 192.168.20.0/24
-   The camera, thermostat, and laptop all sit on 192.168.20.0/24, so one compromised IoT device can directly reach the laptop.
-   *Recommendation:* Create a guest or IoT SSID that cannot initiate connections to laptops.
+1. **Wi-Fi uses WPA3** - SSID "<redacted>"
+   The active wireless network uses WPA3 with a strong signal.
+   *Recommendation:* Keep WPA3 enabled and continue using a strong passphrase.
+
+2. **Small local subnet was scanned** - 172.20.10.0/28
+   The scan covered 172.20.10.0/28 and found only the gateway and local host.
+   *Recommendation:* Keep untrusted IoT devices on a guest or IoT SSID when they are added.
+
+3. **Gateway provides DNS locally** - 172.20.10.1 port 53/tcp
+   172.20.10.1 answers DNS on 53/tcp for the local network.
+   *Recommendation:* Leave DNS reachable only from the LAN and avoid exposing it to the internet.
+
+4. **Gateway has a tcpwrapped high port** - 172.20.10.1 port 49152/tcp
+   172.20.10.1 exposes 49152/tcp as tcpwrapped, which indicates access control is present but the service should be identified.
+   *Recommendation:* Confirm which gateway service owns 49152/tcp and disable it if it is unnecessary.
 
 ## Risk Dimensions
 
-- **Router vulnerability:** ✅ no issues found
-- **Wi-Fi encryption:** 🟡 Medium (1 finding)
-- **IoT exposure:** 🟡 Medium (2 findings)
-- **Network isolation:** 🟡 Medium (1 finding)
-- **Remote attack surface:** ✅ no issues found
+- **Router vulnerability:** no issues found
+- **Wi-Fi encryption:** Info (1 finding)
+- **IoT exposure:** Medium (1 finding)
+- **Network isolation:** Info (1 finding)
+- **Remote attack surface:** Medium (3 findings)
 
 ## Prioritised Remediation
 
-1. 🟡 Enable WPA3 or WPA2/WPA3 mixed mode if all devices support it.
-2. 🟡 Move cameras to an IoT VLAN or guest SSID and rotate their passwords.
-3. 🟡 Disable the local admin page or restrict it to a management VLAN.
-4. 🟡 Create a guest or IoT SSID that cannot initiate connections to laptops.
+1. Restrict RTSP to trusted devices or disable it when it is not needed.
+2. Disable FTP on the gateway unless it is required for a known management workflow.
+3. Confirm which gateway service owns 49152/tcp and disable it if it is unnecessary.
