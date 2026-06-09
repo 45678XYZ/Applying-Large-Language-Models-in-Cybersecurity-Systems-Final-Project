@@ -14,7 +14,8 @@ Usage:
     .venv/bin/python scripts/run_scan.py --offline report.json  # load cache, skip scan
 
 Requires a populated KB (`scripts/build_kb.py`) and Azure credentials in `.env`.
-Scanning runs nmap; OS detection is off by default to avoid sudo.
+Scanning runs nmap; OS detection is off unless run as root — under `sudo` the
+agent auto-enables `nmap -O` (and ARP host discovery, which finds more hosts).
 """
 
 from __future__ import annotations
