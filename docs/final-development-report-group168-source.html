@@ -1,0 +1,272 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>第 168 組 開發與說明報告</title>
+  <style>
+    body { font-family: "Microsoft JhengHei", "Aptos", sans-serif; font-size: 11pt; line-height: 1.55; color: #172033; }
+    .cover { text-align: center; margin-top: 80px; page-break-after: always; }
+    .cover h1 { font-size: 24pt; margin: 0 0 8px; }
+    .cover h2 { font-size: 18pt; margin: 0 0 28px; }
+    h1 { font-size: 18pt; color: #17324d; border-bottom: 1px solid #9fb8cf; padding-bottom: 4px; margin-top: 24px; }
+    h2 { font-size: 14pt; color: #23415f; margin-top: 18px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0 16px; }
+    th, td { border: 1px solid #b7c9d6; padding: 6px 8px; vertical-align: top; }
+    th { background: #eaf2f8; font-weight: bold; }
+    .cover table { width: 72%; margin-left: auto; margin-right: auto; text-align: left; }
+    ul { margin-top: 4px; }
+    li { margin-bottom: 4px; }
+    code { font-family: Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>基於大型語言模型的家庭網路資安自動化健檢系統</h1>
+    <h2>LLM-Powered Home Network Security Auditor</h2>
+    <h2>完整開發與說明報告</h2>
+    <p><strong>組別:</strong>第 168 組<br>
+    <strong>組員姓名:</strong>陳俊瑋、陳揚盛<br>
+    <strong>學號:</strong> 陳俊瑋 112502038、陳揚盛 112502527</p>
+    <table>
+      <tr><th>項目</th><th>內容</th></tr>
+      <tr><td>組別</td><td>第 168 組</td></tr>
+      <tr><td>組員姓名</td><td>陳俊瑋、陳揚盛</td></tr>
+      <tr><td>學號</td><td>陳俊瑋 112502038、陳揚盛 112502527</td></tr>
+      <tr><td>課程主題</td><td>大型語言模型與資訊安全系統</td></tr>
+      <tr><td>文件日期</td><td>2026 年 6 月 9 日</td></tr>
+    </table>
+    <p>本報告依據專案 README、system-design、proposal、demo script、regression log 與程式碼模組整理。</p>
+  </section>
+
+  <h1>1. 專案摘要</h1>
+  <p>本專案開發一套以 LLM Agent 為核心的家庭網路資安健檢系統。使用者只需在 Streamlit 介面按下開始掃描，系統便會自動取得本機網路資訊、Wi-Fi 安全狀態、區域網路裝置與開放服務，並透過 RAG 知識庫比對 CVE 與 OWASP IoT Top 10 等安全知識，最後產出 A 到 F 等級的結構化安全報告與可追問的自然語言 Q&amp;A。</p>
+  <p>系統定位並非取代專業滲透測試，而是降低家庭與小型網路使用者的資安門檻，將掃描器、漏洞資料庫與風險分級轉換成可閱讀、可執行的修復建議。</p>
+  <table>
+    <tr><th>面向</th><th>說明</th></tr>
+    <tr><td>核心目標</td><td>自動化 LAN 探測、裝置盤點、漏洞查詢、風險分級、修復建議與後續問答。</td></tr>
+    <tr><td>主要使用者</td><td>缺乏資安背景但希望了解家中 Wi-Fi、路由器與 IoT 裝置風險的一般使用者。</td></tr>
+    <tr><td>主要成果</td><td>完成掃描工具層、RAG 檢索層、LLM Agent、報告產生器、Streamlit UI、Demo 情境與 Regression 測試。</td></tr>
+    <tr><td>驗證方式</td><td>使用 golden scan、prompt probes、Q&amp;A regression、單元測試與三組 demo 報告驗證功能。</td></tr>
+  </table>
+
+  <h1>2. 研究背景與動機</h1>
+  <p>智慧家庭設備普及後，家庭網路不再只有電腦與手機，也包含 IP Camera、智慧音箱、智慧電視、掃地機器人、NAS、路由器管理服務等多種連網裝置。這些設備常因預設密碼、過時韌體、開放不必要服務、缺少網路隔離而成為攻擊入口。</p>
+  <p>傳統工具如 Nmap、NVD、OWASP 指南雖然資料完整，但輸出偏技術導向。一般使用者即使取得掃描結果，也未必能判斷哪個問題最嚴重、是否真的影響自己、以及應該先修哪一項。因此，本專案以 LLM Agent 串接掃描工具與 RAG 知識庫，整合資料蒐集、風險推理與可讀報告。</p>
+
+  <h1>3. 專案目標與需求</h1>
+  <ul>
+    <li>自動化探測：在使用者授權的 LAN 內，自動取得本機 IP、子網路、閘道、DNS、Wi-Fi 加密與活躍裝置。</li>
+    <li>攻擊面盤點：使用 Nmap 掃描常見連接埠與服務版本，標記 gateway、IoT 類設備、管理介面與遠端服務。</li>
+    <li>漏洞與知識查詢：使用 RAG 對 CVE、OWASP IoT Top 10 與內建安全文件進行語意檢索。</li>
+    <li>風險分級：將 findings 分成 high、medium、low、info，並彙整為 A、B、C、D、F 的總體安全等級。</li>
+    <li>自然語言報告與 Q&amp;A：產出 Markdown/Streamlit 報告，並允許使用者以中文或英文追問掃描結果與修復步驟。</li>
+    <li>可重現 Demo：提供 clean network、risky IoT、vulnerable router 三種固定情境，降低展示時對真實 LAN 狀態的依賴。</li>
+  </ul>
+
+  <h1>4. 系統整體架構</h1>
+  <p>系統採分層式架構：UI 層負責操作與呈現，Agent 層負責流程編排與安全推理，Scanners 層負責實際環境探測，RAG 層負責知識檢索，Models 層提供跨模組一致的資料結構。</p>
+  <table>
+    <tr><th>層級</th><th>模組</th><th>責任</th></tr>
+    <tr><td>前端介面層</td><td><code>app.py</code>、<code>ui/chat.py</code>、<code>ui/report_view.py</code></td><td>提供 Streamlit 操作介面、掃描按鈕、Demo 載入、報告視覺化與 Q&amp;A 對話。</td></tr>
+    <tr><td>LLM Agent 層</td><td><code>agent/core.py</code>、<code>agent/tools.py</code>、<code>agent/reporter.py</code></td><td>執行掃描流程、封裝工具呼叫、綜合 CVE 與 port risk、產生 ScanReport。</td></tr>
+    <tr><td>工具執行層</td><td><code>scanners/*</code></td><td>取得網路資訊、Wi-Fi 狀態、Nmap 裝置掃描、路由器 HTTP/UPnP 探測與開放 port baseline 風險。</td></tr>
+    <tr><td>RAG 知識庫層</td><td><code>rag/*</code>、<code>data/knowledge_base</code>、<code>data/vector_db</code></td><td>使用 Azure Embedding 與 ChromaDB 建立 CVE/KB 檢索能力，支援 product/version 與 port risk 查詢。</td></tr>
+    <tr><td>資料模型層</td><td><code>models/*</code></td><td>以 Pydantic 定義 Device、Port、NetworkInfo、WiFiInfo、RouterInfo、CVE、RiskFinding、ScanReport。</td></tr>
+    <tr><td>測試與腳本</td><td><code>scripts/*</code>、<code>tests/*</code></td><td>建立知識庫、匯出 Demo、執行 golden scan、prompt probes、Q&amp;A regression 與單元測試。</td></tr>
+  </table>
+  <h2>4.1 主要資料流</h2>
+  <ul>
+    <li>使用者在 Streamlit 介面點擊 Start Scan 或載入 Demo scenario。</li>
+    <li>SecurityAgent 依序取得 NetworkInfo、WiFiInfo、Device 清單與 RouterInfo。</li>
+    <li>Agent 針對 router model、device vendor/product/service 呼叫 <code>lookup_cve</code>，並對開放連接埠呼叫 <code>check_open_ports_risk</code>。</li>
+    <li>Agent 根據掃描結果、CVE context、KB snippets 與 prompt 規則合成 RiskFinding。</li>
+    <li><code>reporter.assemble_report</code> 排序 findings、計算 severity counts、套用 grade rubric，並輸出 ScanReport 與 Markdown summary。</li>
+    <li>UI 將 report 呈現成 header cards、network summary、risk dimensions、devices table、findings tabs 與 Markdown report；Q&amp;A 使用目前 report 作為 grounded context。</li>
+  </ul>
+
+  <h1>5. 開發環境與技術堆疊</h1>
+  <table>
+    <tr><th>類別</th><th>採用技術</th><th>用途</th></tr>
+    <tr><td>程式語言</td><td>Python 3.12</td><td>主要後端、掃描、RAG、Agent 與 UI 實作。</td></tr>
+    <tr><td>前端</td><td>Streamlit</td><td>快速建立互動式掃描與報告介面。</td></tr>
+    <tr><td>LLM/Agent</td><td>Azure OpenAI、LangChain Tool-Calling</td><td>自然語言推理、工具編排、報告合成與 Q&amp;A。</td></tr>
+    <tr><td>Embedding</td><td>text-embedding-3-small</td><td>將 CVE 與安全文件轉為向量。</td></tr>
+    <tr><td>向量資料庫</td><td>ChromaDB</td><td>儲存與查詢 CVE chunks 與 KB chunks。</td></tr>
+    <tr><td>網路探測</td><td>Nmap、python-nmap、psutil、requests、系統 Wi-Fi 工具</td><td>裝置發現、port/service 掃描、Wi-Fi 與路由器探測。</td></tr>
+    <tr><td>資料驗證</td><td>Pydantic</td><td>統一跨模組資料結構並降低格式錯誤。</td></tr>
+    <tr><td>測試</td><td>pytest、fixture scripts</td><td>驗證 parser、retriever、reporter、prompt grounding 與 demo scenarios。</td></tr>
+  </table>
+
+  <h1>6. 核心資料模型設計</h1>
+  <p>資料模型放在 <code>models/</code>，讓掃描工具、Agent、報告與 UI 使用一致欄位，避免各層以鬆散 dict 互傳造成錯誤。</p>
+  <table>
+    <tr><th>模型</th><th>重點欄位</th><th>用途</th></tr>
+    <tr><td>Port</td><td>port、protocol、service、product、version、state</td><td>描述開放服務與版本資訊，是 port risk 與 CVE 查詢的重要來源。</td></tr>
+    <tr><td>Device</td><td>ip、hostname、mac、vendor、os、role、open_ports</td><td>表示 LAN 中一台裝置，支援 gateway 與 IoT 類型推理。</td></tr>
+    <tr><td>NetworkInfo</td><td>local_ip、subnet、gateway、dns_servers、interface、is_wireless</td><td>描述本機網路視角與掃描範圍。</td></tr>
+    <tr><td>WiFiInfo</td><td>ssid、encryption、band、signal_dbm</td><td>評估 Wi-Fi 加密與無線狀態。</td></tr>
+    <tr><td>RouterInfo</td><td>ip、model、firmware_version、admin_interface、upnp_enabled、remote_management_open</td><td>聚合路由器特定探測結果。</td></tr>
+    <tr><td>CVE</td><td>cve_id、description、cvss_score、published、affected_products、source</td><td>RAG 檢索後回傳的漏洞資料。</td></tr>
+    <tr><td>RiskFinding</td><td>severity、dimension、title、description、affected、recommendation、cves</td><td>報告中的單一風險項目。</td></tr>
+    <tr><td>ScanReport</td><td>generated_at、network、wifi、router、devices、findings、overall_grade、summary_markdown</td><td>UI、Markdown 報告與 Q&amp;A 的核心輸出物件。</td></tr>
+  </table>
+
+  <h1>7. 掃描工具層實作</h1>
+  <h2>7.1 網路資訊探測</h2>
+  <p><code>scanners/network_info.py</code> 以 psutil 與系統指令取得 IPv4 介面、預設路由、DNS 與網段。它針對 Linux、macOS、Windows 提供不同 parser，並在 psutil 不可用時以 ipconfig、route、ifconfig 等輸出做 fallback。</p>
+  <h2>7.2 Wi-Fi 安全探測</h2>
+  <p><code>scanners/wifi_security.py</code> 支援 Linux nmcli/iwconfig、macOS system_profiler/wdutil/airport 與 Windows netsh。解析結果會正規化成 WPA3、WPA2、WPA、WEP、Open 等加密模式，並嘗試轉換訊號強度與頻段。</p>
+  <h2>7.3 Nmap 區域網路掃描</h2>
+  <p><code>scanners/nmap_scanner.py</code> 透過 python-nmap 掃描指定 subnet。一般模式掃描 Top 100 ports 並執行服務版本偵測；若程式以 root/sudo 執行，可啟用 OS detection 與 ARP discovery，得到更完整的裝置資訊。掃描結果會轉成 Device 與 Port 模型，並使用 OUI lookup 補足廠牌資訊。</p>
+  <h2>7.4 路由器探測</h2>
+  <p><code>scanners/router_probe.py</code> 對 gateway 嘗試 HTTP/HTTPS probe，解析 Server header、HTML title、model hint、firmware version，並檢查常見管理介面、UPnP 與遠端管理相關 port。此設計能在不登入路由器的前提下取得可公開觀察的弱訊號。</p>
+  <h2>7.5 Port Risk Baseline</h2>
+  <p><code>scanners/port_risk.py</code> 對每個 open port 建立 baseline finding。管理服務如 SSH、Telnet、FTP、RDP、VNC 與 IoT 服務如 RTSP、UPnP、MQTT、CoAP 會被特別標記，再搭配 RAG 查到的 port risk 文件補充說明與建議。</p>
+
+  <h1>8. RAG 知識庫設計</h1>
+  <p>RAG 層由 <code>embeddings.py</code>、<code>vector_store.py</code>、<code>retriever.py</code> 與 ingest loaders 組成。專案狀態紀錄顯示知識庫已完成 end-to-end 建置，包含 5,355 個 CVE chunks 與 200 個 KB chunks，並驗證 semantic retrieval 與 metadata-filtered retrieval。</p>
+  <table>
+    <tr><th>元件</th><th>設計重點</th></tr>
+    <tr><td>nvd_loader.py</td><td>呼叫 NVD API 2.0，解析 CVE id、英文描述、CVSS 分數、vector、受影響 CPE 與發布時間。</td></tr>
+    <tr><td>owasp_loader.py</td><td>載入 Markdown、HTML、PDF 等靜態安全文件，並保留 source/path metadata。</td></tr>
+    <tr><td>chunker.py</td><td>以 chunk size 與 overlap 切分長文件，避免 embedding context 過長並保留語意連續性。</td></tr>
+    <tr><td>embeddings.py</td><td>封裝 Azure OpenAI Embedding client，包含 batch 與 retry。</td></tr>
+    <tr><td>vector_store.py</td><td>封裝 ChromaDB collection add/query/count，並將 query 結果整理為一致格式。</td></tr>
+    <tr><td>retriever.py</td><td>提供 lookup_cve(product, version, k, min_cvss)、lookup_port_risk(port, service, k)、search(query, k)。</td></tr>
+  </table>
+
+  <h1>9. LLM Agent 與 Prompt 設計</h1>
+  <p>SecurityAgent 是系統的大腦，負責把 deterministic scanner 與 probabilistic LLM 推理接在一起。<code>run_full_scan</code> 會依序執行 network、Wi-Fi、Nmap、router、CVE gathering、port risk 與 finding synthesis，最後交給 reporter 組裝報告。</p>
+  <h2>9.1 工具封裝</h2>
+  <p><code>agent/tools.py</code> 將 scanner 與 retriever 包裝成 LangChain tool，包含 get_network_info、get_wifi_security、scan_network、check_router_info、lookup_cve、check_open_ports_risk。每個 tool 使用 Pydantic args schema，並將結果序列化成 JSON，方便 LLM 與程式端共同處理。</p>
+  <h2>9.2 Grounding 與反幻覺策略</h2>
+  <ul>
+    <li>Prompt 明確要求 CVE 只能引用提供的 context，不得自行補造 CVE id。</li>
+    <li>若產品家族相同但版本未知，高 CVSS CVE 不直接升為 high，而以 possible/verify firmware version 的 medium finding 呈現。</li>
+    <li>固定常見 home network severity：open/WEP 為 high、WPA2 without WPA3 為 medium、UPnP on 為 medium、LAN-only admin panel 為 low、缺資料為 info。</li>
+    <li>Q&amp;A 使用目前 ScanReport 與 retriever snippets，回答需回到掃描事實，遇到報告沒有的內容要明確說無法確認。</li>
+  </ul>
+
+  <h1>10. 報告產生與評分規則</h1>
+  <p><code>agent/reporter.py</code> 負責將 findings 排序、統計、分級並渲染 Markdown。severity 順序為 high、medium、low、info；報告包含 header、network summary、device inventory、findings、risk dimension breakdown 與 remediation。</p>
+  <table>
+    <tr><th>等級</th><th>UI 標籤</th><th>判定意義</th></tr>
+    <tr><td>A</td><td>Secure</td><td>沒有會降低分數的問題，或僅呈現安全資訊。</td></tr>
+    <tr><td>B</td><td>Good</td><td>有 low 或少量 medium finding，但未達高風險。</td></tr>
+    <tr><td>C</td><td>Needs improvement</td><td>出現 high finding，或 medium finding 數量較多，需要改善。</td></tr>
+    <tr><td>D</td><td>At risk</td><td>多個 high finding，網路已存在明顯高風險。</td></tr>
+    <tr><td>F</td><td>Critical</td><td>高風險問題達 critical 門檻，應立即處理。</td></tr>
+  </table>
+  <p>Risk dimensions 分為 Router vulnerability、Wi-Fi encryption、IoT exposure、Network isolation、Remote attack surface。UI 會依維度顯示最嚴重等級與 finding 數量，協助使用者快速理解問題集中在哪裡。</p>
+
+  <h1>11. 前端介面與使用流程</h1>
+  <p>Streamlit UI 由 <code>ui/chat.py</code> 與 <code>ui/report_view.py</code> 組成。首頁提供 Start Scan、Demo scenario、Load Demo Report 與 Reset。掃描期間會顯示階段式進度文字；報告完成後，畫面呈現 Security Report header、Network、Risk Dimensions、Devices、Findings tabs、Markdown report 與 Follow-up Q&amp;A。</p>
+  <table>
+    <tr><th>流程</th><th>使用者操作</th><th>系統反應</th></tr>
+    <tr><td>Live Scan</td><td>點擊 Start Scan</td><td>建立 agent，執行真實 LAN 掃描，完成後顯示報告並啟用 Q&amp;A。</td></tr>
+    <tr><td>Demo Report</td><td>選擇 scenario 並點擊 Load Demo Report</td><td>載入固定 ScanReport，用於課堂展示與截圖。</td></tr>
+    <tr><td>Follow-up Q&amp;A</td><td>輸入自然語言問題</td><td>根據目前報告與 KB context 串流回答。</td></tr>
+    <tr><td>Reset</td><td>點擊 Reset</td><td>清除目前 report、agent session 與 Q&amp;A history。</td></tr>
+  </table>
+
+  <h1>12. Demo 情境與代表性輸出</h1>
+  <table>
+    <tr><th>Scenario</th><th>代表情境</th><th>預期等級與重點</th></tr>
+    <tr><td>Clean network</td><td>乾淨家庭網路，WPA3、兩台裝置、無 findings。</td><td>Grade A；驗證系統不會在無風險時硬造問題。</td></tr>
+    <tr><td>Risky IoT</td><td>小型 LAN，有 gateway FTP、RTSP/tcpwrapped 等需確認服務。</td><td>Grade B；2 devices、2 medium、4 info，可展示中文 Q&amp;A。</td></tr>
+    <tr><td>Vulnerable router</td><td>含 BusyBox router vulnerability 與實際 CVE 引用。</td><td>Grade D；High findings，報告引用 CVE-2018-5371 並給修復建議。</td></tr>
+  </table>
+  <p>Demo 腳本建議依序展示首頁、running scan、Risky IoT 報告摘要、risk dimensions/devices/findings、中文追問，再切換 Clean network 與 Vulnerable router 展示不同分級。</p>
+
+  <h1>13. 測試與驗證</h1>
+  <p>專案同時使用 deterministic 與 LLM-based regression。deterministic 測試保證資料模型、scanner parser、reporter rubric 與 demo fixture 穩定；LLM-based 測試則用 temperature 0 的 prompt probes 與 Q&amp;A regression 檢查 grounding。</p>
+  <table>
+    <tr><th>測試項目</th><th>覆蓋內容</th><th>紀錄結果</th></tr>
+    <tr><td>pytest tests/test_scanners.py</td><td>OUI lookup、Wi-Fi parser、router probe、Nmap mapping、port risk baseline。</td><td>涵蓋跨平台 parser 與 scanner output normalization。</td></tr>
+    <tr><td>tests/test_demo_scenarios.py</td><td>三個 demo scenario 的 grade 與 vulnerable router CVE。</td><td>確認 demo 報告可重現課堂展示。</td></tr>
+    <tr><td>golden_scan.py</td><td>固定 golden fixtures 經 assemble_report 後的 grade、severity mix、排序、CVE、五大 dimensions、remediation 與 A-F rubric。</td><td>2026-06-05 紀錄：25/25 pass。</td></tr>
+    <tr><td>prompt_probes.py</td><td>空 CVE、相關 CVE、不相干 CVE、版本未知 CVE、缺資料等情境。</td><td>更新後紀錄：14/14 invariants hold。</td></tr>
+    <tr><td>qa_regression.py</td><td>固定問題集測試回答是否引用真實 report facts 並避免 fabricated facts。</td><td>golden report 紀錄：8/8 pass。</td></tr>
+  </table>
+  <p>Regression 紀錄也保留 prompt convergence 過程：早期 admin panel reachable 的 severity 可能在 low/info 之間漂移，後續透過 prompt anchor 固定為 LAN-only admin panel low；版本未知 CVE 則從 confident high 調整為 medium 並要求使用者確認 firmware version。</p>
+
+  <h1>14. 分工與開發歷程</h1>
+  <table>
+    <tr><th>成員</th><th>主要負責模組</th><th>具體工作</th></tr>
+    <tr><td>陳揚盛</td><td>掃描工具、前端、測試與 Demo</td><td>Nmap 掃描封裝、Wi-Fi 探測、路由器 probe、Streamlit UI、demo scenarios、截圖與展示流程。</td></tr>
+    <tr><td>陳俊瑋</td><td>Agent、Prompt、RAG 與報告邏輯</td><td>LangChain Agent、system/report/QA prompts、RAG ingestion/retrieval、reporter、grading rubric、prompt regression。</td></tr>
+  </table>
+  <table>
+    <tr><th>階段</th><th>工作內容</th><th>完成狀態</th></tr>
+    <tr><td>Phase 0</td><td>專案 bootstrap 與基本結構建立。</td><td>Done</td></tr>
+    <tr><td>Phase 1</td><td>scanner foundation 與 RAG knowledge base。</td><td>Done</td></tr>
+    <tr><td>Phase 2</td><td>retriever API 與 scanner enrichment，凍結 lookup_cve/lookup_port_risk/search contract。</td><td>Done</td></tr>
+    <tr><td>Phase 3</td><td>port_risk.py、tools.py、prompts draft 等 cross-cutting glue。</td><td>Done</td></tr>
+    <tr><td>Phase 4</td><td>Agent executor、reporter 與 UI shell。</td><td>Done</td></tr>
+    <tr><td>Phase 5</td><td>真實 LAN end-to-end 與 UI screenshots。</td><td>Done</td></tr>
+    <tr><td>Phase 6</td><td>Regression、polish、demo reports 與 acceptance checks。</td><td>Done</td></tr>
+  </table>
+
+  <h1>15. 安裝、執行與操作說明</h1>
+  <h2>15.1 環境準備</h2>
+  <ul>
+    <li>安裝 Python 3.12 與 uv，建立虛擬環境：<code>uv venv &amp;&amp; uv pip install -r requirements.txt</code>。</li>
+    <li>安裝 Nmap；若需要 OS detection，可用 sudo 或系統管理員權限執行。</li>
+    <li>建立 <code>.env</code>，填入 Azure OpenAI chat deployment 與 text-embedding-3-small embedding 設定。</li>
+    <li>執行 <code>scripts/build_kb.py</code> 建立 RAG knowledge base。</li>
+  </ul>
+  <h2>15.2 執行方式</h2>
+  <table>
+    <tr><th>目的</th><th>指令</th></tr>
+    <tr><td>啟動 Streamlit UI</td><td><code>streamlit run app.py</code></td></tr>
+    <tr><td>CLI 掃描與互動 Q&amp;A</td><td><code>.venv/bin/python scripts/run_scan.py</code></td></tr>
+    <tr><td>從 cached report 離線展示</td><td><code>.venv/bin/python scripts/run_scan.py --offline report.json</code></td></tr>
+    <tr><td>匯出 demo reports</td><td><code>python scripts/demo_scenarios.py --export --out docs/demo-reports</code></td></tr>
+    <tr><td>執行 deterministic regression</td><td><code>.venv/bin/python scripts/golden_scan.py</code></td></tr>
+  </table>
+
+  <h1>16. 倫理、安全與限制</h1>
+  <ul>
+    <li>授權原則：本系統僅應掃描自己擁有或明確獲授權的網路，不得用於未授權目標。</li>
+    <li>掃描範圍：目前設計主要評估 LAN 內部攻擊面，不能完整代表外網暴露狀態。</li>
+    <li>資料隱私：LLM 推理會使用掃描摘要與裝置/服務資訊，部署時需注意雲端 API 的資料處理政策。</li>
+    <li>辨識限制：Nmap OS detection、HTTP banner 與 router model hint 可能不完整或不準確。</li>
+    <li>知識庫限制：CVE 結果取決於 KB 更新頻率、產品/版本資訊完整度與檢索命中品質。</li>
+    <li>LLM 限制：即使有 prompt grounding，安全建議仍應由使用者或資安人員確認後再執行。</li>
+  </ul>
+
+  <h1>17. 專案成果與結論</h1>
+  <p>本專案完成了從掃描、檢索、推理、報告到互動問答的端到端家庭網路資安健檢流程。技術上，系統展示 LLM Agent 可以作為資安工具的 orchestration layer，將 Nmap、Wi-Fi parser、router probe、RAG 檢索與報告產生整合為單一使用者體驗。</p>
+  <p>在可信度方面，專案沒有只依賴 LLM 自由生成，而是透過 Pydantic models、deterministic scanner、RAG context、prompt anchors、golden fixtures 與 regression scripts 限制輸出範圍。這讓系統能在家庭網路場景中產生較穩定、可追溯且對非專業使用者友善的建議。</p>
+  <p>未來可延伸方向包含：加入外網暴露檢查、支援更多 router vendor fingerprint、定期自動更新 CVE KB、提供修復前後差異比較、輸出 PDF/Word 報告，以及加入更細緻的 IoT segmentation 檢查。</p>
+
+  <h1>18. 參考資料</h1>
+  <ul>
+    <li>NIST National Vulnerability Database (NVD): https://nvd.nist.gov/</li>
+    <li>OWASP Internet of Things Project / IoT Top 10: https://owasp.org/www-project-internet-of-things/</li>
+    <li>Nmap Reference Guide: https://nmap.org/book/man.html</li>
+    <li>LangChain Documentation: https://python.langchain.com/docs/</li>
+    <li>ChromaDB Documentation: https://docs.trychroma.com/</li>
+    <li>Streamlit Documentation: https://docs.streamlit.io/</li>
+    <li>Lewis et al., Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks, NeurIPS 2020.</li>
+    <li>Yao et al., ReAct: Synergizing Reasoning and Acting in Language Models, ICLR 2023.</li>
+  </ul>
+
+  <h1>附錄 A. 專案主要檔案對照</h1>
+  <table>
+    <tr><th>路徑</th><th>說明</th></tr>
+    <tr><td>README.md</td><td>專案架構、資料流、環境需求與快速開始。</td></tr>
+    <tr><td>docs/system-design.md</td><td>開發階段、完成狀態、Acceptance 與 UI/報告規格。</td></tr>
+    <tr><td>docs/proposal.md</td><td>研究背景、目標、架構與原始分工規劃。</td></tr>
+    <tr><td>docs/demo-script.md</td><td>Phase 6 demo 流程、截圖 checklist 與 scenario talk track。</td></tr>
+    <tr><td>docs/phase6-regression.md</td><td>Regression 與 prompt convergence 紀錄。</td></tr>
+    <tr><td>agent/core.py</td><td>SecurityAgent、完整掃描流程、CVE gathering、findings synthesis 與 Q&amp;A。</td></tr>
+    <tr><td>agent/reporter.py</td><td>ScanReport 組裝、grading rubric、Markdown 渲染與 remediation 排序。</td></tr>
+    <tr><td>scanners/</td><td>network_info、wifi_security、nmap_scanner、router_probe、port_risk。</td></tr>
+    <tr><td>rag/</td><td>embedding client、ChromaDB wrapper、retriever API、NVD/OWASP ingestion。</td></tr>
+    <tr><td>ui/</td><td>Streamlit chat shell 與 report visualization。</td></tr>
+    <tr><td>scripts/</td><td>KB build、demo reports、golden scan、prompt probes、Q&amp;A regression。</td></tr>
+    <tr><td>tests/</td><td>單元測試與 demo scenario validation。</td></tr>
+  </table>
+</body>
+</html>
