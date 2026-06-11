@@ -55,10 +55,18 @@ def _on_event(message: str) -> None:
     print(f"  ▸ {message}")
 
 
+def _print_streamed_answer(agent: SecurityAgent, question: str) -> None:
+    """Print the answer token-by-token as it arrives, matching the UI's feel."""
+    for chunk in agent.ask_stream(question):
+        print(chunk, end="", flush=True)
+    print()
+
+
 def _qa_loop(agent: SecurityAgent, single: str | None) -> None:
     if single is not None:
         print(f"\nQ: {single}")
-        print(f"A: {agent.ask(single)}")
+        print("A: ", end="", flush=True)
+        _print_streamed_answer(agent, single)
         return
     print("\nQ&A mode — ask about the scan (blank line or 'exit' to quit).")
     while True:
@@ -68,7 +76,7 @@ def _qa_loop(agent: SecurityAgent, single: str | None) -> None:
             break
         if not question or question.lower() in {"exit", "quit"}:
             break
-        print(agent.ask(question))
+        _print_streamed_answer(agent, question)
 
 
 def main() -> int:
