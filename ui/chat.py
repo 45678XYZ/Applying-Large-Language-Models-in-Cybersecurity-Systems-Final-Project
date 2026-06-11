@@ -47,6 +47,7 @@ def render_chat(create_agent: AgentFactory) -> None:
 
     st.title("Home Network Security Auditor")
     st.caption("Sequential LAN scan, CVE lookup, graded report, and grounded follow-up Q&A.")
+    _show_notice()
 
     report: ScanReport | None = st.session_state.get("report")
     if report is None:
@@ -63,7 +64,18 @@ def _init_state() -> None:
     st.session_state.setdefault("agent", None)
     st.session_state.setdefault("messages", [])
     st.session_state.setdefault("scanning", False)
+    st.session_state.setdefault("notice", None)
     _load_query_demo()
+
+
+def _show_notice() -> None:
+    """Render a banner queued before an `st.rerun()`, which would otherwise
+    discard anything written in the run that queued it."""
+    notice = st.session_state.pop("notice", None)
+    if not notice:
+        return
+    level, text = notice
+    (st.error if level == "error" else st.warning)(text)
 
 
 def _load_query_demo() -> None:
@@ -175,10 +187,12 @@ def _run_live_scan(create_agent: AgentFactory) -> None:
             agent = create_agent(on_event)
             report = agent.run_full_scan()
         except Exception as exc:  # noqa: BLE001 - UI should report bootstrap/scan failures.
-            status.update(label="Scan failed", state="error")
-            st.error(f"Could not complete the scan: {exc}")
+            # Rerun rather than just returning: this run already drew every
+            # sidebar control disabled, so without a rerun the page would be
+            # left with no enabled widget to recover from.
             st.session_state.scanning = False
-            return
+            st.session_state.notice = ("error", f"Could not complete the scan: {exc}")
+            st.rerun()
 
         st.session_state.agent = agent
         st.session_state.report = report
@@ -204,7 +218,7 @@ def _load_demo_report(create_agent: AgentFactory, scenario_id: str) -> None:
         agent = create_agent(None)
         agent.load_report(report)
     except Exception as exc:  # noqa: BLE001 - demo report can still render without Q&A.
-        st.warning(f"Demo report loaded, but Q&A is unavailable: {exc}")
+        st.session_state.notice = ("warning", f"Demo report loaded, but Q&A is unavailable: {exc}")
 
     st.session_state.agent = agent
     st.session_state.report = report
