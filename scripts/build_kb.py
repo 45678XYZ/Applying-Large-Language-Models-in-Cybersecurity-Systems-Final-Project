@@ -4,12 +4,12 @@ Pipeline:
     NVD JSONs   ──► cve_to_text ──┐
                                   ├─► chunker ──► AzureOpenAIEmbedder ──► VectorStore("cve")
     OWASP / NIST ─► loader ───────┤                                                       │
-                                  └────────────────────────────────► VectorStore("kb") ◄──┘
+                                  └───────────────────────────► VectorStore("kb_docs") ◄──┘
 
 Two Chroma collections live under `settings.vector_db_path`:
     - `cve` — one chunk per CVE (multi-chunk for long ones), metadata
       keyed by `cve_id`, `severity`, `cvss_score`, `published`.
-    - `kb`  — OWASP IoT Top 10, NIST 800-183, NIST IR 8425, …
+    - `kb_docs` — OWASP IoT Top 10, NIST 800-183, NIST IR 8425, …
 
 Re-runs are idempotent: VectorStore uses upsert, so unchanged docs are
 silently overwritten.

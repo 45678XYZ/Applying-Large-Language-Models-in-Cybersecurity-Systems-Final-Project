@@ -223,7 +223,9 @@ Reset 後可重新執行 live scan，或載入不同 demo scenario。
 
 - LLM client 初始化失敗。
 - Azure OpenAI 設定缺漏。
-- Demo report 是透過 `?demo=...` URL 自動載入，該模式只保證報告渲染，不保證 Q&A agent 已建立。
+
+無論用側邊欄按鈕或 `?demo=...` URL 載入 demo report，UI 都會嘗試建立 Q&A
+agent；建立失敗時報告仍可正常瀏覽，畫面上會出現警告說明原因。
 
 ### 報告中沒有 CVE
 

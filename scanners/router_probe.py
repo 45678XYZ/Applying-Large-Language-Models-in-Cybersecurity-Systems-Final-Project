@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import socket
+import warnings
 from dataclasses import dataclass
 
 from models import RouterInfo
@@ -54,16 +55,21 @@ def check_router_info(gateway_ip: str) -> RouterInfo:
 def _http_probe(gateway_ip: str, scheme: str) -> HttpProbeResult | None:
     try:
         import requests
+        from urllib3.exceptions import InsecureRequestWarning
     except ImportError as exc:  # pragma: no cover - environment dependent.
         raise RuntimeError("requests is required for check_router_info().") from exc
 
     try:
-        response = requests.get(
-            f"{scheme}://{gateway_ip}/",
-            timeout=4,
-            verify=False,
-            allow_redirects=True,
-        )
+        with warnings.catch_warnings():
+            # verify=False is deliberate — home routers ship self-signed certs —
+            # so keep urllib3's per-request warning out of the scan output.
+            warnings.simplefilter("ignore", InsecureRequestWarning)
+            response = requests.get(
+                f"{scheme}://{gateway_ip}/",
+                timeout=4,
+                verify=False,
+                allow_redirects=True,
+            )
     except requests.RequestException:
         return None
 
