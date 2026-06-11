@@ -42,7 +42,7 @@ def _icon(paths: str, size: int = 26) -> str:
 
 def render_chat(create_agent: AgentFactory) -> None:
     """Mount the scan CTA, report surface, and Q&A history."""
-    _init_state()
+    _init_state(create_agent)
     _render_sidebar(create_agent)
 
     st.title("Home Network Security Auditor")
@@ -59,13 +59,13 @@ def render_chat(create_agent: AgentFactory) -> None:
     _render_chat_input()
 
 
-def _init_state() -> None:
+def _init_state(create_agent: AgentFactory) -> None:
     st.session_state.setdefault("report", None)
     st.session_state.setdefault("agent", None)
     st.session_state.setdefault("messages", [])
     st.session_state.setdefault("scanning", False)
     st.session_state.setdefault("notice", None)
-    _load_query_demo()
+    _load_query_demo(create_agent)
 
 
 def _show_notice() -> None:
@@ -78,7 +78,7 @@ def _show_notice() -> None:
     (st.error if level == "error" else st.warning)(text)
 
 
-def _load_query_demo() -> None:
+def _load_query_demo(create_agent: AgentFactory) -> None:
     scenario_id = st.query_params.get("demo")
     if not scenario_id or st.session_state.report is not None:
         return
@@ -89,17 +89,7 @@ def _load_query_demo() -> None:
         st.warning(f"Unknown demo scenario: {scenario_id}")
         return
 
-    st.session_state.report = report
-    st.session_state.agent = None
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                f"Demo report loaded with grade {report.overall_grade}. "
-                "Use it to validate the report layout and screenshots."
-            ),
-        }
-    ]
+    _activate_demo_report(create_agent, report)
 
 
 def _render_sidebar(create_agent: AgentFactory) -> None:
@@ -211,7 +201,17 @@ def _run_live_scan(create_agent: AgentFactory) -> None:
 
 
 def _load_demo_report(create_agent: AgentFactory, scenario_id: str) -> None:
-    report = build_demo_report(scenario_id)
+    _activate_demo_report(create_agent, build_demo_report(scenario_id))
+    st.rerun()
+
+
+def _activate_demo_report(create_agent: AgentFactory, report: ScanReport) -> None:
+    """Install a demo report into the session, with Q&A primed when possible.
+
+    Shared by the sidebar button and the `?demo=` query param so both paths
+    get a working agent; if the agent can't be built (e.g. missing Azure
+    credentials) the report still renders and a notice explains why.
+    """
     agent: SecurityAgent | None = None
 
     try:
@@ -231,7 +231,6 @@ def _load_demo_report(create_agent: AgentFactory, scenario_id: str) -> None:
             ),
         }
     ]
-    st.rerun()
 
 
 def _render_history() -> None:
