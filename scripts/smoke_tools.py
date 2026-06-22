@@ -160,7 +160,7 @@ def _check_inventory(tools: list[BaseTool]) -> list[str]:
 
 
 def _dispatch(tool: BaseTool, call: dict) -> tuple[str, str]:
-    """Run one tool call. Returns (status, detail) — PASS / PENDING / FAIL."""
+    """Run one tool call. Returns (status, detail) — PASS / FAIL."""
     try:
         result = tool.invoke(call)
         content = result.content if isinstance(result, ToolMessage) else result
@@ -168,8 +168,6 @@ def _dispatch(tool: BaseTool, call: dict) -> tuple[str, str]:
         return "PASS", f"{type(parsed).__name__} json, {len(content)} chars"
     except Exception as exc:  # noqa: BLE001 - a smoke test classifies all errors
         inner = exc.__cause__ or exc
-        if isinstance(inner, NotImplementedError) and call["name"] == "check_open_ports_risk":
-            return "PENDING", "scanners/port_risk.py not implemented yet (A — SYNC 2)"
         return "FAIL", f"{type(inner).__name__}: {inner}"
 
 
@@ -202,14 +200,13 @@ def main() -> int:
             print(f"  [{status}]".ljust(12) + f"{call['name']:22s} {detail}")
 
     failed = len(inventory_failures) + statuses.count("FAIL")
-    pending = statuses.count("PENDING")
     passed = statuses.count("PASS")
     print("=" * 38)
-    print(f"wired: {passed}/{len(EXPECTED_TOOLS)} pass · {pending} pending · {failed} fail")
+    print(f"wired: {passed}/{len(EXPECTED_TOOLS)} pass · {failed} fail")
     if failed:
         print("RESULT: FAIL — tool wiring is broken")
         return 1
-    print("RESULT: PASS — wiring sound" + (" (port_risk pending A)" if pending else ""))
+    print("RESULT: PASS — wiring sound")
     return 0
 
 

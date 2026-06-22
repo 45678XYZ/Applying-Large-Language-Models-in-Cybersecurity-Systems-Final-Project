@@ -15,7 +15,7 @@ natural-language Q&A on the results.
 
 ---
 
-## 1.5. Status Snapshot (updated 2026-06-06)
+## 1.5. Status Snapshot (updated 2026-06-22)
 
 ```
 Phase 0 — Bootstrap                          ✅ DONE
@@ -32,7 +32,7 @@ Phase 4 — Agent Executor & Report            DONE
   ├─ A: UI shell (3 tasks)                  ███    DONE
   └─ B: core / reporter / prompt-iter (3)   ███    DONE
 Phase 5 — End-to-end on a Real Network       live UI captures done; grade B local LAN screenshot set
-Phase 6 — Testing, Polish, Demo              regression suites green (A+B); acceptance #1–#5 met
+Phase 6 — Testing, Polish, Demo              suites green (A+B): 46 pytest + golden/probe/Q&A; acceptance #1–#5 met
 ```
 
 **KB built end-to-end**: 5,355 CVE chunks + 200 KB chunks; semantic +
@@ -46,10 +46,11 @@ metadata-filtered retrieval verified on both collections.
 
 **§7 decided (2026-06-03).** Agent orchestration is **strictly sequential**
 (fixed Python pipeline in `core.py`, not LLM-chosen); no device-type classifier
-(LLM infers); UI **streams progress with fast-scan defaults** (pending A
-sign-off on the `core.py` callback interface). The A–F grade stays
-deterministic in `reporter.py`. `AGENT_SYSTEM_PROMPT` will be trimmed of its
-tool-selection framing when `core.py` lands. See §7 for the full rationale.
+(LLM infers); UI **streams progress with fast-scan defaults** via the
+`core.py` `on_event` callback (now wired into `ui/`). The A–F grade stays
+deterministic in `reporter.py`. `AGENT_SYSTEM_PROMPT` has been trimmed of its
+tool-selection framing now that `core.py` owns orchestration. See §7 for the
+full rationale.
 
 ---
 
@@ -254,7 +255,7 @@ now lands at **C** with Wi-Fi read as WPA2.
 
 - [x] `tests/test_scanners.py` — fixture-driven tests (no real network calls);
       includes phase 5 regressions for gateway severity and macOS `wdutil`
-      parsing. `python -m pytest tests\test_scanners.py --basetemp .pytest_tmp -p no:cacheprovider` → 10/10 pass.
+      parsing. `python -m pytest tests\test_scanners.py --basetemp .pytest_tmp -p no:cacheprovider` → 11/11 pass.
 - [x] Demo script: 3 scenarios (clean network / risky IoT / vulnerable router)
       in `scripts/demo_scenarios.py`, documented in `docs/demo-script.md`.
       `python scripts/demo_scenarios.py --export --out docs/demo-reports`
@@ -285,6 +286,12 @@ now lands at **C** with Wi-Fi read as WPA2.
       (2026-06-09) added **version confidence**: a CVE that matches only the
       product family / unknown version is now capped below high and flagged
       "verify firmware", not asserted as exploitable. **14/14 invariants hold.**
+- [x] Agent & RAG unit tests (added 2026-06-22) — `tests/test_agent.py` covers
+      the reporter's grading/assembly, the SYNC-2 tool contract, and the
+      sequential `core.py` pipeline + grounded Q&A with a stubbed LLM/retriever;
+      `tests/test_rag.py` covers chunker boundaries, retriever query/filter/dedup,
+      the embedding contract, and the NVD/OWASP loaders. All offline. Full suite:
+      `python -m pytest -q` → **46 passed**.
 
 > Both share `scripts/golden_fixtures.py` — one hand-authored home LAN whose
 > graded output is deterministic (unlike a live nmap scan), which is what makes
@@ -309,7 +316,8 @@ now lands at **C** with Wi-Fi read as WPA2.
 `AppTest` (cold boot, no exceptions, report renders); #2 streams through the
 `on_event` callback; #3 and #4 confirmed on the live grade-**C** run (2 real-CVE
 highs in a five-dimension graded report); #5 covered by `qa_regression.py`
-(8/8 grounded). Live-network UI screenshots are the only remaining demo to-do.
+(8/8 grounded). UI screenshots for the three demo scenarios are captured under
+`docs/demo-screenshots/` (home/start, running scan, reports, Chinese Q&A).
 
 ---
 
@@ -340,14 +348,15 @@ highs in a five-dimension graded report); #5 covered by `qa_regression.py`
   `AGENT_SYSTEM_PROMPT` drops the "decide which tool to call next / recommended
   workflow" framing (orchestration moved to code); role, grounding,
   anti-hallucination, and five-dimension/severity rules stay.
-- **Scan duration in UI — STREAM PROGRESS + FAST DEFAULTS** (pending A sign-off).
+- **Scan duration in UI — STREAM PROGRESS + FAST DEFAULTS** (done; A signed off).
   `core.py` exposes a callback hook so `ui/` can render tool-call progress
   step-by-step (`st.status`). Defaults: top-100 ports, OS detection off unless
   the app is run as root — `core.py` auto-enables `nmap -O` when
   `os.geteuid()==0` (root also unlocks ARP host discovery, which finds more
   hosts), so a normal run stays sudo-free; optionally narrow the host range;
-  keep the `--offline` cached `ScanReport` as a demo fallback. **SYNC point:**
-  agree the `core.py` callback interface with A before the UI wires to it.
+  keep the `--offline` cached `ScanReport` as a demo fallback. **SYNC point
+  closed:** `SecurityAgent(on_event=…)` is the agreed callback interface and
+  `ui/` now renders its events as `st.status` progress.
 - **CVE severity needs version confidence — CAP FAMILY-ONLY MATCHES (2026-06-09).**
   `lookup_cve` matches by product/service name (semantic), not CPE version range,
   so a retrieved CVE can belong to the same family without affecting the exact
