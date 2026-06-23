@@ -94,3 +94,17 @@ sudo .venv/bin/python -m streamlit run app.py     # run as root → auto OS dete
 .venv/bin/python scripts/prompt_probes.py   # synthesis grounding probes (needs Azure creds + KB)
 .venv/bin/python scripts/qa_regression.py   # grounded-answer checks (needs Azure creds + KB)
 ```
+
+## Demo
+
+- **Home screen**
+
+   ![Home screen](docs/demo-screenshots/home-start.png)
+
+- **Graded security report for a risky IoT network**
+
+   ![Risky IoT report](docs/demo-screenshots/risky-iot-report.png)
+
+- **Natural-language Q&A over the report**
+
+   ![Risky IoT Q&A in Chinese](docs/demo-screenshots/risky-iot-qa-zh.png)
